@@ -1,0 +1,6 @@
+node_modules
+dist
+.aws-sam
+template.generated.yaml
+response-*.json
+coverage

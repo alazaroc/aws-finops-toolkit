@@ -1,0 +1,76 @@
+# AWS FinOps Toolkit - Configuration
+
+# This creates an AWS Budget and sends alerts to the first email in email_config.to.
+account_budget:
+  enabled: false
+  amount: 400.00
+  alerts: [50, 80] # percentages
+
+# Email configuration
+email_config:
+  from: "sender@example.com" # Sender email (must be verified in SES)
+  to: ["recipient@example.com"] # List of recipients
+  display_name: "aws-finops-toolkit" # Sender display name in outgoing emails
+
+# Tags to apply to all resources (array of { key, value })
+tags:
+  - key: project
+    value: finops-toolkit
+  - key: repository
+    value: https://github.com/alazaroc/aws-finops-toolkit
+  - key: environment
+    value: prod
+  - key: type
+    value: backend
+  - key: iac
+    value: sam
+
+# Tags that must be present on all resources on the AWS account
+required_tags: ["project"]
+
+# Optional: limit regions to scan (when empty, all regions are scanned)
+regions: ["us-east-1", "eu-west-1"]
+
+# Lambda functions configuration
+lambdas:
+  # Analyzes AWS costs using Cost Explorer API and generates detailed reports
+  cost_analyzer:
+    enabled: true
+  # Checks tag compliance across all AWS resources in the account
+  compliance_checker:
+    enabled: true
+  # Creates comprehensive inventory of all tags used across AWS resources
+  tag_inventory:
+    enabled: true
+  # Generates cost optimization recommendations from multiple AWS services
+  optimization_insights:
+    enabled: true
+  # Provides historical cost analysis via direct lambda invocation (manual or scheduled)
+  historical_cost_analyzer:
+    enabled: true
+
+# Cost analysis configuration
+cost_analysis:
+  group_by_tag: "project" # default "project"
+  total_monthly_threshold: 20.0 # default 20.0
+
+# Scheduled tasks configuration
+schedules:
+  # Possible values for each schedule:
+  # - enabled: true|false
+  # - cron: "cron(...)"
+  # cost_analysis supports multiple cron entries (array)
+  cost_analysis:
+    enabled: true
+    crons:
+      - "cron(0 9 1 * ? *)"
+      - "cron(0 9 15 * ? *)"
+  compliance_check:
+    enabled: true
+    cron: "cron(0 9 1 * ? *)"
+  tag_inventory:
+    enabled: true
+    cron: "cron(0 9 1 * ? *)"
+  optimization_insights:
+    enabled: true
+    cron: "cron(0 11 1 * ? *)"

@@ -1,0 +1,25 @@
+# Handle line endings automatically for all files
+* text=auto
+
+# Bash scripts - always use LF (Unix line endings) and mark as executable
+*.sh text eol=lf export-ignore
+scripts/*.sh export-subst
+
+# Batch/PowerShell scripts - use CRLF (Windows line endings)
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+
+# Source code - use LF
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+
+# Binary files - no conversion
+*.png binary
+*.jpg binary
+*.gif binary
+*.zip binary

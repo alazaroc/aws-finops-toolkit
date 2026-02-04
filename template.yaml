@@ -1,0 +1,620 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: |
+  AWS FinOps Toolkit
+  Cost analysis and compliance checking
+
+Parameters:
+  TagProject:
+    Type: String
+    Default: finops-toolkit
+    Description: Tag value for project (set via template defaults or override).
+
+
+  FromEmail:
+    Type: String
+    Description: Sender email address (must be verified in SES) (set via config/config.yml and npm run deploy).
+
+  ToEmails:
+    Type: String
+    Description: Comma-separated list of recipient email addresses. NOTE - Budget notifications will only use the FIRST email in the list (set via config/config.yml and npm run deploy).
+
+  # Lambda functions enable/disable configuration
+  CostAnalyzerEnabled:
+    Type: String
+    Description: Enable Cost Analyzer Lambda (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  ComplianceCheckerEnabled:
+    Type: String
+    Description: Enable Compliance Checker Lambda (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  TagInventoryEnabled:
+    Type: String
+    Description: Enable Tag Inventory Lambda (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  HistoricalCostAnalyzerEnabled:
+    Type: String
+    Description: Enable Historical Cost Analyzer Lambda (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  OptimizationInsightsLambdaEnabled:
+    Type: String
+    Description: Enable Optimization Insights Lambda (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  # Optional: Enable account budget
+  EnableAccountBudget:
+    Type: String
+    Description: Enable account-level budget (yes/no) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["yes", "no"]
+
+  AccountBudgetAmount:
+    Type: Number
+    Description: Total monthly budget amount in USD (only used if EnableAccountBudget=yes) (set via config/config.yml and npm run deploy).
+    MinValue: 1
+
+  AccountBudgetAlert1:
+    Type: Number
+    Description: Account budget alert percentage #1 (set via config/config.yml and npm run deploy).
+    MinValue: 1
+    MaxValue: 200
+
+  AccountBudgetAlert2:
+    Type: Number
+    Description: Account budget alert percentage #2 (set via config/config.yml and npm run deploy).
+    MinValue: 1
+    MaxValue: 200
+
+  # Configuration parameters (instead of hardcoded values)
+  GroupByTag:
+    Type: String
+    Description: Tag to group costs by (comma-separated for multiple tags) (set via config/config.yml and npm run deploy).
+
+  TotalThreshold:
+    Type: Number
+    Description: Total monthly cost threshold in USD (set via config/config.yml and npm run deploy).
+    MinValue: 0
+
+  ProjectThresholds:
+    Type: String
+    Description: JSON map of per-tag thresholds (optional) (set via config/config.yml and npm run deploy).
+
+  Regions:
+    Type: String
+    Description: Comma-separated list of regions to scan (optional) (set via config/config.yml and npm run deploy).
+
+  RequiredTags:
+    Type: String
+    Description: Comma-separated list of required tags (set via config/config.yml and npm run deploy).
+
+  CostSchedule1:
+    Type: String
+    Description: Cron for cost analysis schedule (day 1) (set via config/config.yml and npm run deploy).
+
+  CostSchedule1Enabled:
+    Type: String
+    Description: Enable cost analysis schedule (day 1) (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  CostSchedule15:
+    Type: String
+    Description: Cron for cost analysis schedule (day 15) (set via config/config.yml and npm run deploy).
+
+  CostSchedule15Enabled:
+    Type: String
+    Description: Enable cost analysis schedule (day 15) (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  ComplianceSchedule:
+    Type: String
+    Description: Cron for compliance schedule (set via config/config.yml and npm run deploy).
+
+  ComplianceScheduleEnabled:
+    Type: String
+    Description: Enable compliance schedule (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  TagInventorySchedule:
+    Type: String
+    Description: Cron for tag inventory schedule (set via config/config.yml and npm run deploy).
+
+  TagInventoryScheduleEnabled:
+    Type: String
+    Description: Enable tag inventory schedule (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+  OptimizationInsightsSchedule:
+    Type: String
+    Description: Cron for optimization insights schedule (set via config/config.yml and npm run deploy).
+
+  OptimizationInsightsScheduleEnabled:
+    Type: String
+    Description: Enable optimization insights schedule (true/false) (set via config/config.yml and npm run deploy).
+    AllowedValues: ["true", "false"]
+
+Globals:
+  Function:
+    Timeout: 300
+    Runtime: nodejs22.x
+    MemorySize: 512
+    Tags: &CommonTagMap
+      project: !Ref TagProject
+    PropagateTags: true
+  Api:
+    PropagateTags: true
+
+Conditions:
+  CreateAccountBudget: !Equals [!Ref EnableAccountBudget, "yes"]
+  CostAnalyzerEnabledCondition: !Equals [!Ref CostAnalyzerEnabled, "true"]
+  ComplianceCheckerEnabledCondition: !Equals [!Ref ComplianceCheckerEnabled, "true"]
+  TagInventoryEnabledCondition: !Equals [!Ref TagInventoryEnabled, "true"]
+  HistoricalCostAnalyzerEnabledCondition: !Equals [!Ref HistoricalCostAnalyzerEnabled, "true"]
+  OptimizationInsightsLambdaEnabledCondition: !Equals [!Ref OptimizationInsightsLambdaEnabled, "true"]
+  CostSchedule1EnabledCondition: !And
+    - !Equals [!Ref CostSchedule1Enabled, "true"]
+    - !Condition CostAnalyzerEnabledCondition
+  CostSchedule15EnabledCondition: !And
+    - !Equals [!Ref CostSchedule15Enabled, "true"]
+    - !Condition CostAnalyzerEnabledCondition
+  ComplianceScheduleEnabledCondition: !And
+    - !Equals [!Ref ComplianceScheduleEnabled, "true"]
+    - !Condition ComplianceCheckerEnabledCondition
+  TagInventoryScheduleEnabledCondition: !And
+    - !Equals [!Ref TagInventoryScheduleEnabled, "true"]
+    - !Condition TagInventoryEnabledCondition
+  OptimizationInsightsScheduleEnabledCondition: !And
+    - !Equals [!Ref OptimizationInsightsScheduleEnabled, "true"]
+    - !Condition OptimizationInsightsLambdaEnabledCondition
+
+Resources:
+  # S3 Bucket for reports
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub finops-toolkit-reports-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldReports
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags: &CommonTagList
+        - Key: project
+          Value: !Ref TagProject
+
+  # Cost Analysis Lambda
+  CostAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Condition: CostAnalyzerEnabledCondition
+    Properties:
+      FunctionName: finops-cost-analyzer
+      CodeUri: src/lambdas/cost-analyzer/
+      Handler: dist/index.handler
+      Description: Cost analysis using AWS Cost Explorer API
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref ReportsBucket
+          ACCOUNT_ID: !Ref AWS::AccountId
+          FROM_EMAIL: !Ref FromEmail
+          TO_EMAILS: !Ref ToEmails
+          GROUP_BY_TAG: !Ref GroupByTag
+          TOTAL_THRESHOLD: !Sub "${TotalThreshold}"
+          PROJECT_THRESHOLDS: !Ref ProjectThresholds
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - ce:GetCostAndUsage
+              - ce:GetDimensionValues
+              - compute-optimizer:GetEC2InstanceRecommendations
+              - compute-optimizer:GetEBSVolumeRecommendations
+              - compute-optimizer:GetLambdaFunctionRecommendations
+              - budgets:ViewBudget
+              - budgets:DescribeBudgets
+              - iam:ListAccountAliases
+              - account:GetAccountInformation
+            Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
+        - Statement:
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
+
+  # Compliance Checker Lambda
+  ComplianceFunction:
+    Type: AWS::Serverless::Function
+    Condition: ComplianceCheckerEnabledCondition
+    Properties:
+      FunctionName: finops-compliance-checker
+      CodeUri: src/lambdas/compliance-checker/
+      Handler: dist/index.handler
+      Description: Tag compliance check across all regions
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref ReportsBucket
+          ACCOUNT_ID: !Ref AWS::AccountId
+          FROM_EMAIL: !Ref FromEmail
+          TO_EMAILS: !Ref ToEmails
+          REQUIRED_TAGS: !Ref RequiredTags
+          REGIONS: !Ref Regions
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - resourcegroupstaggingapi:GetResources
+              - resourcegroupstaggingapi:GetTagKeys
+              - resourcegroupstaggingapi:GetTagValues
+              - tag:GetResources
+              - tag:GetTagKeys
+              - tag:GetTagValues
+              - ec2:DescribeRegions
+              - iam:ListAccountAliases
+              - account:GetAccountInformation
+            Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
+        - Statement:
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
+
+  # Historical Cost Analysis Lambda (API Gateway triggered)
+  HistoricalCostFunction:
+    Type: AWS::Serverless::Function
+    Condition: HistoricalCostAnalyzerEnabledCondition
+    Properties:
+      FunctionName: finops-historical-cost-analyzer
+      CodeUri: src/lambdas/historical-cost-analyzer/
+      Handler: dist/index.handler
+      Description: Historical cost analysis with flexible time periods
+      Timeout: 300
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref ReportsBucket
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - ce:GetCostAndUsage
+              - ce:GetDimensionValues
+              - sts:GetCallerIdentity
+              - iam:ListAccountAliases
+              - account:GetAccountInformation
+            Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
+      # Events:
+      #   HistoricalCostApi:
+      #     Type: Api
+      #     Properties:
+      #       RestApiId: !Ref ApiGateway
+      #       Path: /historical-costs
+      #       Method: get
+      #   HistoricalCostApiPost:
+      #     Type: Api
+      #     Properties:
+      #       RestApiId: !Ref ApiGateway
+      #       Path: /historical-costs
+      #       Method: post
+      #
+      # TODO: Harden or remove the API Gateway endpoints before re-enabling to avoid exposing cost data.
+
+  # Tag Inventory Lambda
+  TagInventoryFunction:
+    Type: AWS::Serverless::Function
+    Condition: TagInventoryEnabledCondition
+    Properties:
+      FunctionName: finops-tag-inventory
+      CodeUri: src/lambdas/tag-inventory/
+      Handler: dist/index.handler
+      Description: Comprehensive tag inventory and analysis
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref ReportsBucket
+          FROM_EMAIL: !Ref FromEmail
+          TO_EMAILS: !Ref ToEmails
+          REQUIRED_TAGS: !Ref RequiredTags
+          REGIONS: !Ref Regions
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - resourcegroupstaggingapi:GetResources
+              - resourcegroupstaggingapi:GetTagKeys
+              - resourcegroupstaggingapi:GetTagValues
+              - tag:GetResources
+              - tag:GetTagKeys
+              - tag:GetTagValues
+              - ec2:DescribeRegions
+              - iam:ListAccountAliases
+              - account:GetAccountInformation
+            Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
+        - Statement:
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
+
+  # Optimization Insights Lambda
+  OptimizationInsightsFunction:
+    Type: AWS::Serverless::Function
+    Condition: OptimizationInsightsLambdaEnabledCondition
+    Properties:
+      FunctionName: finops-optimization-insights
+      CodeUri: src/lambdas/optimization-insights/
+      Handler: dist/index.handler
+      Description: Cost optimization insights from multiple AWS services
+      Timeout: 120
+      MemorySize: 512
+      Environment:
+        Variables:
+          REPORTS_BUCKET: !Ref ReportsBucket
+          FROM_EMAIL: !Ref FromEmail
+          TO_EMAILS: !Ref ToEmails
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              # Cost Optimization Hub permissions
+              - cost-optimization-hub:ListEnrollmentStatuses
+              - cost-optimization-hub:ListRecommendations
+              - cost-optimization-hub:GetRecommendation
+              # Trusted Advisor permissions
+              - support:DescribeTrustedAdvisorChecks
+              - support:DescribeTrustedAdvisorCheckResult
+              - support:DescribeTrustedAdvisorCheckSummaries
+              # Compute Optimizer permissions
+              - compute-optimizer:GetEnrollmentStatus
+              - compute-optimizer:GetEC2InstanceRecommendations
+              - compute-optimizer:GetLambdaFunctionRecommendations
+              - compute-optimizer:GetEBSVolumeRecommendations
+              - compute-optimizer:GetAutoScalingGroupRecommendations
+              # General permissions
+              - iam:ListAccountAliases
+              - account:GetAccountInformation
+            Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref ReportsBucket
+        - Statement:
+            Effect: Allow
+            Action:
+              - ses:SendEmail
+              - ses:SendRawEmail
+            Resource: "*"
+
+  CostAnalyzerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CostAnalyzerEnabledCondition
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CostAnalyzerFunction}
+      Tags: *CommonTagList
+
+  ComplianceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: ComplianceCheckerEnabledCondition
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ComplianceFunction}
+      Tags: *CommonTagList
+
+  TagInventoryLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: TagInventoryEnabledCondition
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${TagInventoryFunction}
+      Tags: *CommonTagList
+
+  HistoricalCostLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: HistoricalCostAnalyzerEnabledCondition
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${HistoricalCostFunction}
+      Tags: *CommonTagList
+
+  OptimizationInsightsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: OptimizationInsightsLambdaEnabledCondition
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${OptimizationInsightsFunction}
+      Tags: *CommonTagList
+
+  # ApiGateway:
+  #   Type: AWS::Serverless::Api
+  #   Condition: HistoricalCostAnalyzerEnabledCondition
+  #   Properties:
+  #     Name: finops-toolkit-api
+  #     StageName: Prod
+  #     Tags: *CommonTagMap
+
+  # TODO: Security review needed before allowing API Gateway to publish historical cost data.
+
+  CostAnalyzerSchedule1Rule:
+    Type: AWS::Events::Rule
+    Condition: CostSchedule1EnabledCondition
+    Properties:
+      Description: Cost analysis - beginning of month (analyzes previous month)
+      ScheduleExpression: !Ref CostSchedule1
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt CostAnalyzerFunction.Arn
+          Id: CostAnalyzerSchedule1Target
+      Tags: *CommonTagList
+
+  CostAnalyzerSchedule1Permission:
+    Type: AWS::Lambda::Permission
+    Condition: CostSchedule1EnabledCondition
+    Properties:
+      FunctionName: !Ref CostAnalyzerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CostAnalyzerSchedule1Rule.Arn
+
+  CostAnalyzerSchedule15Rule:
+    Type: AWS::Events::Rule
+    Condition: CostSchedule15EnabledCondition
+    Properties:
+      Description: Cost analysis - mid-month (analyzes current month)
+      ScheduleExpression: !Ref CostSchedule15
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt CostAnalyzerFunction.Arn
+          Id: CostAnalyzerSchedule15Target
+      Tags: *CommonTagList
+
+  CostAnalyzerSchedule15Permission:
+    Type: AWS::Lambda::Permission
+    Condition: CostSchedule15EnabledCondition
+    Properties:
+      FunctionName: !Ref CostAnalyzerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CostAnalyzerSchedule15Rule.Arn
+
+  ComplianceScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: ComplianceScheduleEnabledCondition
+    Properties:
+      Description: Weekly compliance check
+      ScheduleExpression: !Ref ComplianceSchedule
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt ComplianceFunction.Arn
+          Id: ComplianceScheduleTarget
+      Tags: *CommonTagList
+
+  ComplianceSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Condition: ComplianceScheduleEnabledCondition
+    Properties:
+      FunctionName: !Ref ComplianceFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ComplianceScheduleRule.Arn
+
+  TagInventoryScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: TagInventoryScheduleEnabledCondition
+    Properties:
+      Description: Monthly tag inventory analysis
+      ScheduleExpression: !Ref TagInventorySchedule
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt TagInventoryFunction.Arn
+          Id: TagInventoryScheduleTarget
+      Tags: *CommonTagList
+
+  TagInventorySchedulePermission:
+    Type: AWS::Lambda::Permission
+    Condition: TagInventoryScheduleEnabledCondition
+    Properties:
+      FunctionName: !Ref TagInventoryFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt TagInventoryScheduleRule.Arn
+
+  OptimizationInsightsScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: OptimizationInsightsScheduleEnabledCondition
+    Properties:
+      Description: Monthly optimization insights analysis
+      ScheduleExpression: !Ref OptimizationInsightsSchedule
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt OptimizationInsightsFunction.Arn
+          Id: OptimizationInsightsScheduleTarget
+      Tags: *CommonTagList
+
+  OptimizationInsightsSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Condition: OptimizationInsightsScheduleEnabledCondition
+    Properties:
+      FunctionName: !Ref OptimizationInsightsFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt OptimizationInsightsScheduleRule.Arn
+
+  # Optional: Account Budget
+  AccountBudget:
+    Type: AWS::Budgets::Budget
+    Condition: CreateAccountBudget
+    Properties:
+      Budget:
+        BudgetName: !Sub finops-account-budget-${AWS::AccountId}
+        BudgetLimit:
+          Amount: !Ref AccountBudgetAmount
+          Unit: USD
+        TimeUnit: MONTHLY
+        BudgetType: COST
+        CostFilters:
+          LinkedAccount:
+            - !Ref AWS::AccountId
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref AccountBudgetAlert1
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Select [0, !Split [",", !Ref ToEmails]]
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: !Ref AccountBudgetAlert2
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Select [0, !Split [",", !Ref ToEmails]]
+
+Outputs:
+  ReportsBucketName:
+    Description: S3 bucket for storing reports
+    Value: !Ref ReportsBucket
+
+  CostAnalyzerFunctionArn:
+    Condition: CostAnalyzerEnabledCondition
+    Description: Cost Analyzer Lambda Function ARN
+    Value: !GetAtt CostAnalyzerFunction.Arn
+
+  ComplianceFunctionArn:
+    Condition: ComplianceCheckerEnabledCondition
+    Description: Compliance Checker Lambda Function ARN
+    Value: !GetAtt ComplianceFunction.Arn
+
+  TagInventoryFunctionArn:
+    Condition: TagInventoryEnabledCondition
+    Description: Tag Inventory Lambda Function ARN
+    Value: !GetAtt TagInventoryFunction.Arn
+
+  HistoricalCostFunctionArn:
+    Condition: HistoricalCostAnalyzerEnabledCondition
+    Description: Historical Cost Analyzer Lambda Function ARN
+    Value: !GetAtt HistoricalCostFunction.Arn
+
+  OptimizationInsightsFunctionArn:
+    Condition: OptimizationInsightsLambdaEnabledCondition
+    Description: Optimization Insights Lambda Function ARN
+    Value: !GetAtt OptimizationInsightsFunction.Arn
+
+  # HistoricalCostApiUrl:
+  #   Condition: HistoricalCostAnalyzerEnabledCondition
+  #   Description: Historical Cost Analysis API URL
+  #   Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/Prod/historical-costs"
