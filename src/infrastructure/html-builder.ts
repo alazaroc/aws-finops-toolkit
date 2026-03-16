@@ -144,30 +144,6 @@ export class HtmlReportBuilder {
   /**
    * Build report header section
    */
-  static buildHeader(config: {
-    date: Date;
-    accountId: string;
-    additionalInfo?: Record<string, any>;
-  }): string {
-    const { date, accountId, additionalInfo = {} } = config;
-
-    let html = `
-        <div class="header">
-            <ul class="meta-list">
-                <li><strong>📅 Date:</strong> ${this.formatDate(date)}</li>
-                <li><strong>🏢 Account:</strong> ${accountId}</li>
-    `;
-
-    // Add additional info
-    for (const [key, value] of Object.entries(additionalInfo)) {
-      html += `<li><strong>${key}:</strong> ${value}</li>\n`;
-    }
-
-    html += `</ul></div>\n`;
-
-    return html;
-  }
-
   /**
    * Build executive summary section
    */
@@ -238,28 +214,6 @@ export class HtmlReportBuilder {
   /**
    * Build a generic metrics section (no savings wording)
    */
-  static buildMetricsSection(config: {
-    title: string;
-    metrics: Record<string, any>;
-    className?: string;
-  }): string {
-    const { title, metrics, className = "executive-summary" } = config;
-
-    let html = `
-        <div class="${className}">
-            <h2>${title}</h2>
-            <ul class="summary-list">
-    `;
-
-    for (const [key, value] of Object.entries(metrics)) {
-      html += `<li><strong>${key}:</strong> ${value}</li>\n`;
-    }
-
-    html += `</ul></div>\n`;
-
-    return html;
-  }
-
   /**
    * Build recommendations section
    */
@@ -884,7 +838,7 @@ export class HtmlReportBuilder {
                 </td>
                 <td>$${item.threshold}</td>
                 <td>${status}</td>
-                ${costAllocationTagEnabled ? `<td><strong>${item.project || "Unknown"}</strong></td><td style="font-size: 0.85em; color: #4b5563;">${topServicesHtml}</td>` : ""}
+                ${costAllocationTagEnabled ? `<td><strong>${item.groupValue || "Unknown"}</strong></td><td style="font-size: 0.85em; color: #4b5563;">${topServicesHtml}</td>` : ""}
             </tr>
       `;
     }

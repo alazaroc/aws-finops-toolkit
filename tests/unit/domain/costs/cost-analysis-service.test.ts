@@ -88,16 +88,16 @@ describe("CostAnalysisService", () => {
 
     expect(report.totalCost).toBe(60);
     expect(report.previousTotalCost).toBe(50);
-    expect(report.projects.length).toBe(2);
+    expect(report.groupedCosts.length).toBe(2);
 
-    const finopsProject = report.projects.find((p) => p.project === "FinOps");
-    expect(finopsProject?.cost).toBe(45);
-    expect(finopsProject?.previousCost).toBe(30);
+    const finopsGroup = report.groupedCosts.find((p) => p.groupValue === "FinOps");
+    expect(finopsGroup?.cost).toBe(45);
+    expect(finopsGroup?.previousCost).toBe(30);
 
     expect(report.serviceBreakdown.length).toBe(2);
     expect(report.serviceBreakdown.find((s) => s.service === "AmazonEC2")?.previousCost).toBe(40);
 
     expect(report.anomalies.length).toBe(1);
-    expect(report.anomalies[0].project).toBe("FinOps");
+    expect(report.anomalies[0].groupValue).toBe("FinOps");
   });
 });

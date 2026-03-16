@@ -24,7 +24,7 @@ The idea is simple: AWS provides the pieces; this toolkit turns them into **oper
 <details>
 <summary><strong>1. Cost Analysis Report</strong></summary>
 
-> Monthly cost breakdown by project/tag with anomaly detection.
+> Monthly cost breakdown by tag/grouping with anomaly detection.
 > Available on Amazon S3 and via email.
 
 ![Cost Analysis Report 1](docs/images/screenshot-email-cost-analysis-1.png)
@@ -109,7 +109,7 @@ This toolkit implements FinOps as an operational practice covering the three typ
 
 | Phase        | Component                          | What it delivers                                     | What it does NOT do                 |
 | ------------ | ---------------------------------- | ---------------------------------------------------- | ----------------------------------- |
-| **Inform**   | finops-cost-analyzer               | Top services by project, anomalies, HTML reports     | Advanced BI / complete dashboards   |
+| **Inform**   | finops-cost-analyzer               | Top services by tag value, anomalies, HTML reports   | Advanced BI / complete dashboards   |
 | **Inform**   | compliance-checker + tag-inventory | Required tag control + management                    | Doesn't "fix tags" automatically    |
 | **Inform**   | finops-historical-cost-analyzer    | Direct lambda invocation that stores JSON/HTML in S3 | Doesn't generate emails/reports     |
 | **Optimize** | finops-optimization-insights       | Consolidated and prioritized recommendations         | Doesn't apply changes automatically |

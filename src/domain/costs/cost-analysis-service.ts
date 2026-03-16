@@ -2,10 +2,10 @@ import { SimpleFinOpsConfig } from "../../types/finops-config";
 import { logger } from "../../core/logger";
 import { ArrayUtils } from "../../core/array-utils";
 import { BaseCostService } from "./base-cost-service";
-import { CostExplorerService } from "./cost-explorer-client";
+import { CostExplorerResult, CostExplorerService } from "./cost-explorer-client";
 
 export interface CostData {
-  project: string;
+  groupValue: string;
   cost: number;
   previousCost: number;
   threshold: number;
@@ -15,7 +15,7 @@ export interface CostData {
 }
 
 export interface AnomalyData {
-  project: string;
+  groupValue: string;
   tagName: string;
   currentCost: number;
   previousCost: number;
@@ -24,8 +24,8 @@ export interface AnomalyData {
 
 export interface TagBreakdown {
   tagName: string;
-  projects: CostData[];
-  zeroCostProjects: string[];
+  groupedCosts: CostData[];
+  zeroCostGroupValues: string[];
   costAllocationTagEnabled: boolean;
   errorMessage?: string;
 }
@@ -39,7 +39,7 @@ export interface CostAnalysisReport {
   periodEndExclusive: boolean;
   totalCost: number;
   previousTotalCost: number;
-  projects: CostData[];
+  groupedCosts: CostData[];
   tagBreakdowns: TagBreakdown[];
   anomalies: AnomalyData[];
   regionalBreakdown: Array<{
@@ -62,6 +62,7 @@ export interface CostAnalysisReport {
  */
 export class CostAnalysisService extends BaseCostService {
   private static readonly MIN_DISPLAY_COST = 0.01;
+  private static readonly UNTAGGED_VALUE = "untagged";
 
   constructor(config: SimpleFinOpsConfig) {
     super(config);
@@ -173,7 +174,7 @@ export class CostAnalysisService extends BaseCostService {
     groupByTags: string[],
     startDate: Date,
     endDate: Date
-  ): Promise<Record<string, any>> {
+  ): Promise<Record<string, CostExplorerResult>> {
     // Use the shared internal method to ensure consistency
     return this.fetchServicesByTagsInternal(groupByTags, startDate, endDate);
   }
@@ -181,7 +182,10 @@ export class CostAnalysisService extends BaseCostService {
   /**
    * Get filtered costs by region and service using a single combined call
    */
-  private async getCombinedCostBreakdown(startDate: Date, endDate: Date): Promise<any> {
+  private async getCombinedCostBreakdown(
+    startDate: Date,
+    endDate: Date
+  ): Promise<CostExplorerResult> {
     const filter = this.getCommonFilters();
     return await this.costExplorer.getCombinedRegionAndServiceBreakdown(startDate, endDate, filter);
   }
@@ -194,9 +198,9 @@ export class CostAnalysisService extends BaseCostService {
     groupByTags: string[],
     startDate: Date,
     endDate: Date
-  ): Promise<Record<string, any>> {
+  ): Promise<Record<string, CostExplorerResult>> {
     const filter = this.getCommonFilters();
-    const serviceByTagData: Record<string, any> = {};
+    const serviceByTagData: Record<string, CostExplorerResult> = {};
 
     await Promise.all(
       groupByTags.map(async (tag) => {
@@ -213,10 +217,12 @@ export class CostAnalysisService extends BaseCostService {
   }
 
   /**
-   * Process raw AWS data into project costs summary
+   * Process raw AWS data into grouped cost summaries
    */
-  private extractProjectCostsFromServiceData(serviceData: any): Record<string, number> {
-    const projectCosts: Record<string, number> = {};
+  private extractGroupedCostsFromServiceData(
+    serviceData: CostExplorerResult | undefined
+  ): Record<string, number> {
+    const groupedCosts: Record<string, number> = {};
 
     if (serviceData?.ResultsByTime) {
       for (const timeResult of serviceData.ResultsByTime) {
@@ -225,14 +231,14 @@ export class CostAnalysisService extends BaseCostService {
         }
         for (const group of timeResult.Groups) {
           const keys = CostExplorerService.extractGroupKeys(group);
-          const projectName = CostExplorerService.normalizeTagValue(keys[0]);
+          const groupValue = CostExplorerService.normalizeTagValue(keys[0]);
           const cost = CostExplorerService.extractCostValue(group);
-          projectCosts[projectName] = (projectCosts[projectName] || 0) + cost;
+          groupedCosts[groupValue] = (groupedCosts[groupValue] || 0) + cost;
         }
       }
     }
 
-    return projectCosts;
+    return groupedCosts;
   }
 
   private async fetchSummaryByTags(
@@ -246,7 +252,7 @@ export class CostAnalysisService extends BaseCostService {
     // Process it into the summary format
     const results: Record<string, Record<string, number>> = {};
     for (const tag of groupByTags) {
-      results[tag] = this.extractProjectCostsFromServiceData(rawData[tag]);
+      results[tag] = this.extractGroupedCostsFromServiceData(rawData[tag]);
     }
 
     return results;
@@ -257,10 +263,10 @@ export class CostAnalysisService extends BaseCostService {
    */
   private processCostData(
     data: {
-      serviceByTagData: Record<string, any>;
-      combinedGlobalData: any;
+      serviceByTagData: Record<string, CostExplorerResult>;
+      combinedGlobalData: CostExplorerResult;
       previousTagData: Record<string, Record<string, number>>;
-      previousGlobalData: any;
+      previousGlobalData: CostExplorerResult;
     },
     endDate: Date,
     groupByTags: string[],
@@ -272,27 +278,27 @@ export class CostAnalysisService extends BaseCostService {
 
     // Process tag breakdowns
     const tagBreakdowns: TagBreakdown[] = [];
-    let allProjects: CostData[] = [];
+    let allGroupedCosts: CostData[] = [];
 
     for (const tagName of groupByTags) {
       const prevCosts = previousTagData[tagName] || {};
-      const { projects, zeroCostProjects } = this.processTagCostsFromServiceData(
+      const { groupedCosts, zeroCostGroupValues } = this.processTagCostsFromServiceData(
         serviceByTagData[tagName],
         tagName,
         prevCosts
       );
 
-      const costAllocationTagEnabled = this.isCostAllocationTagEnabled(projects);
+      const costAllocationTagEnabled = this.isCostAllocationTagEnabled(groupedCosts);
       tagBreakdowns.push({
         tagName,
-        projects,
-        zeroCostProjects,
+        groupedCosts,
+        zeroCostGroupValues,
         costAllocationTagEnabled,
         errorMessage: costAllocationTagEnabled
           ? undefined
-          : `Cost Allocation Tag may not be enabled for tag ${tagName}. AWS Cost Explorer returned only untagged costs for this grouping.`,
+          : this.buildCostAllocationTagWarning(tagName),
       });
-      allProjects = allProjects.concat(projects);
+      allGroupedCosts = allGroupedCosts.concat(groupedCosts);
     }
 
     // Process global breakdowns from combined data
@@ -300,7 +306,7 @@ export class CostAnalysisService extends BaseCostService {
       this.processGlobalBreakdowns(combinedGlobalData, previousGlobalData);
 
     // Detect anomalies
-    const anomalies = this.detectAnomalies(allProjects, data.previousTagData);
+    const anomalies = this.detectAnomalies(allGroupedCosts, data.previousTagData);
 
     return {
       reportDate: new Date(),
@@ -311,7 +317,7 @@ export class CostAnalysisService extends BaseCostService {
       periodEndExclusive,
       totalCost,
       previousTotalCost,
-      projects: allProjects,
+      groupedCosts: allGroupedCosts,
       tagBreakdowns,
       anomalies,
       regionalBreakdown,
@@ -323,12 +329,12 @@ export class CostAnalysisService extends BaseCostService {
    * Process costs for a specific tag using only Service breakdown data
    */
   private processTagCostsFromServiceData(
-    serviceCosts: any,
+    serviceCosts: CostExplorerResult,
     tagName: string,
     previousCosts: Record<string, number> = {}
-  ): { projects: CostData[]; zeroCostProjects: string[] } {
-    const projectMap = new Map<string, { cost: number; services: Map<string, number> }>();
-    const zeroCostProjects = new Set<string>();
+  ): { groupedCosts: CostData[]; zeroCostGroupValues: string[] } {
+    const groupedCostMap = new Map<string, { cost: number; services: Map<string, number> }>();
+    const zeroCostGroupValues = new Set<string>();
 
     if (serviceCosts?.ResultsByTime) {
       for (const timeResult of serviceCosts.ResultsByTime) {
@@ -338,15 +344,15 @@ export class CostAnalysisService extends BaseCostService {
 
         for (const group of timeResult.Groups) {
           const keys = CostExplorerService.extractGroupKeys(group);
-          const projectName = CostExplorerService.normalizeTagValue(keys[0]);
+          const groupValue = CostExplorerService.normalizeTagValue(keys[0]);
           const serviceName = keys[1] || "Unknown";
           const cost = CostExplorerService.extractCostValue(group);
 
-          if (!projectMap.has(projectName)) {
-            projectMap.set(projectName, { cost: 0, services: new Map() });
+          if (!groupedCostMap.has(groupValue)) {
+            groupedCostMap.set(groupValue, { cost: 0, services: new Map() });
           }
 
-          const entry = projectMap.get(projectName)!;
+          const entry = groupedCostMap.get(groupValue)!;
           entry.cost += cost;
           if (cost >= CostAnalysisService.MIN_DISPLAY_COST) {
             entry.services.set(serviceName, (entry.services.get(serviceName) || 0) + cost);
@@ -356,38 +362,38 @@ export class CostAnalysisService extends BaseCostService {
     }
 
     // Second pass: Build CostData objects
-    const projects: CostData[] = [];
-    for (const [projectName, data] of projectMap.entries()) {
+    const groupedCosts: CostData[] = [];
+    for (const [groupValue, data] of groupedCostMap.entries()) {
       if (data.cost >= CostAnalysisService.MIN_DISPLAY_COST) {
         const topServices = Array.from(data.services.entries())
           .map(([service, cost]) => ({ service, cost }))
           .sort((a, b) => b.cost - a.cost)
           .slice(0, 5);
 
-        const threshold = this.getThresholdForProject(projectName, tagName);
-        projects.push({
-          project: projectName,
+        const threshold = this.getThresholdForGroupValue(groupValue, tagName);
+        groupedCosts.push({
+          groupValue,
           cost: data.cost,
-          previousCost: previousCosts[projectName] || 0,
+          previousCost: previousCosts[groupValue] || 0,
           threshold: threshold,
           isOverThreshold: data.cost > threshold,
           topServices,
           tagName,
         });
-      } else if (projectName) {
-        zeroCostProjects.add(projectName);
+      } else if (groupValue) {
+        zeroCostGroupValues.add(groupValue);
       }
     }
 
     return {
-      projects: ArrayUtils.sortBy(projects, (a, b) => b.cost - a.cost),
-      zeroCostProjects: Array.from(zeroCostProjects).sort((a, b) => a.localeCompare(b)),
+      groupedCosts: ArrayUtils.sortBy(groupedCosts, (a, b) => b.cost - a.cost),
+      zeroCostGroupValues: Array.from(zeroCostGroupValues).sort((a, b) => a.localeCompare(b)),
     };
   }
 
   private processGlobalBreakdowns(
-    combinedData: any,
-    previousGlobalData: any
+    combinedData: CostExplorerResult,
+    previousGlobalData: CostExplorerResult
   ): {
     regionalBreakdown: Array<{
       region: string;
@@ -408,8 +414,9 @@ export class CostAnalysisService extends BaseCostService {
     const serviceMap = new Map<string, number>();
     let totalCost = 0;
 
-    if (combinedData?.ResultsByTime?.[0]?.Groups) {
-      for (const group of combinedData.ResultsByTime[0].Groups) {
+    const currentGroups = combinedData.ResultsByTime?.[0]?.Groups;
+    if (currentGroups) {
+      for (const group of currentGroups) {
         const keys = CostExplorerService.extractGroupKeys(group);
         const region = keys[0] || "Unknown";
         const service = keys[1] || "Unknown";
@@ -426,8 +433,9 @@ export class CostAnalysisService extends BaseCostService {
     const prevServiceMap = new Map<string, number>();
     let previousTotalCost = 0;
 
-    if (previousGlobalData?.ResultsByTime?.[0]?.Groups) {
-      for (const group of previousGlobalData.ResultsByTime[0].Groups) {
+    const previousGroups = previousGlobalData.ResultsByTime?.[0]?.Groups;
+    if (previousGroups) {
+      for (const group of previousGroups) {
         const keys = CostExplorerService.extractGroupKeys(group);
         const region = keys[0] || "Unknown";
         const service = keys[1] || "Unknown";
@@ -476,36 +484,36 @@ export class CostAnalysisService extends BaseCostService {
   }
 
   private detectAnomalies(
-    projects: CostData[],
+    groupedCosts: CostData[],
     previousTagData: Record<string, Record<string, number>>
   ): AnomalyData[] {
     const anomalies: AnomalyData[] = [];
     const INCREASE_THRESHOLD = 0.25; // 25% increase
     const MIN_DOLLAR_DIFF = 5.0; // At least $5 difference to avoid noise
 
-    for (const project of projects) {
-      const prevCosts = previousTagData[project.tagName] || {};
-      const prevCost = prevCosts[project.project] || 0;
+    for (const groupedCost of groupedCosts) {
+      const prevCosts = previousTagData[groupedCost.tagName] || {};
+      const prevCost = prevCosts[groupedCost.groupValue] || 0;
 
       if (prevCost > 0) {
-        const diff = project.cost - prevCost;
+        const diff = groupedCost.cost - prevCost;
         const percentageChange = diff / prevCost;
 
         if (percentageChange > INCREASE_THRESHOLD && diff > MIN_DOLLAR_DIFF) {
           anomalies.push({
-            project: project.project,
-            tagName: project.tagName,
-            currentCost: project.cost,
+            groupValue: groupedCost.groupValue,
+            tagName: groupedCost.tagName,
+            currentCost: groupedCost.cost,
             previousCost: prevCost,
             percentageChange: percentageChange * 100,
           });
         }
-      } else if (project.cost > MIN_DOLLAR_DIFF * 2) {
-        // New project with significant cost
+      } else if (groupedCost.cost > MIN_DOLLAR_DIFF * 2) {
+        // New group value with significant cost
         anomalies.push({
-          project: project.project,
-          tagName: project.tagName,
-          currentCost: project.cost,
+          groupValue: groupedCost.groupValue,
+          tagName: groupedCost.tagName,
+          currentCost: groupedCost.cost,
           previousCost: 0,
           percentageChange: 100, // 100% since it's new
         });
@@ -515,12 +523,12 @@ export class CostAnalysisService extends BaseCostService {
     return anomalies.sort((a, b) => b.percentageChange - a.percentageChange);
   }
 
-  private getThresholdForProject(projectName: string, tagName: string): number {
-    const tagThresholds = this.config.cost_analysis?.project_thresholds;
+  private getThresholdForGroupValue(groupValue: string, tagName: string): number {
+    const tagThresholds =
+      this.config.cost_analysis?.group_value_thresholds ||
+      this.config.cost_analysis?.project_thresholds;
     const overrides = tagThresholds?.[tagName];
-    const overrideValue = overrides
-      ? this.findMatchingThreshold(overrides, projectName)
-      : undefined;
+    const overrideValue = overrides ? this.findMatchingThreshold(overrides, groupValue) : undefined;
     if (typeof overrideValue === "number") {
       return overrideValue;
     }
@@ -529,15 +537,15 @@ export class CostAnalysisService extends BaseCostService {
 
   private findMatchingThreshold(
     overrides: Record<string, number>,
-    projectName: string
+    groupValue: string
   ): number | undefined {
-    if (Object.prototype.hasOwnProperty.call(overrides, projectName)) {
-      return overrides[projectName];
+    if (Object.prototype.hasOwnProperty.call(overrides, groupValue)) {
+      return overrides[groupValue];
     }
 
-    const normalizedProject = projectName.toLowerCase();
+    const normalizedGroupValue = groupValue.toLowerCase();
     for (const key of Object.keys(overrides)) {
-      if (normalizedProject.includes(key.toLowerCase())) {
+      if (normalizedGroupValue.includes(key.toLowerCase())) {
         return overrides[key];
       }
     }
@@ -546,7 +554,7 @@ export class CostAnalysisService extends BaseCostService {
 
   private logTagCoverageWarnings(report: CostAnalysisReport): void {
     for (const breakdown of report.tagBreakdowns) {
-      if (breakdown.projects.length === 0) {
+      if (breakdown.groupedCosts.length === 0) {
         logger.warn("Cost analysis returned no grouped tag values", {
           tagName: breakdown.tagName,
         });
@@ -562,11 +570,17 @@ export class CostAnalysisService extends BaseCostService {
     }
   }
 
-  private isCostAllocationTagEnabled(projects: CostData[]): boolean {
-    if (projects.length === 0) {
+  private isCostAllocationTagEnabled(groupedCosts: CostData[]): boolean {
+    if (groupedCosts.length === 0) {
       return true;
     }
 
-    return projects.some((project) => project.project.toLowerCase() !== "untagged");
+    return groupedCosts.some(
+      (groupedCost) => groupedCost.groupValue.toLowerCase() !== CostAnalysisService.UNTAGGED_VALUE
+    );
+  }
+
+  private buildCostAllocationTagWarning(tagName: string): string {
+    return `Cost Allocation Tag may not be enabled for tag ${tagName}. AWS Cost Explorer returned only ${CostAnalysisService.UNTAGGED_VALUE} costs for this grouping.`;
   }
 }

@@ -11,6 +11,7 @@ interface EmailConfig {
 interface CostAnalysisConfig {
   group_by_tag: string | string[]; // Support single tag or multiple tags
   total_monthly_threshold: number;
+  group_value_thresholds?: Record<string, Record<string, number>>;
   project_thresholds?: Record<string, Record<string, number>>;
   exclude_services?: string[];
   include_services?: string[];

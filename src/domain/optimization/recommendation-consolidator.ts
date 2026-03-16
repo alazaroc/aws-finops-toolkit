@@ -1,4 +1,3 @@
-import { logger } from "../../core/logger";
 import { ArrayUtils } from "../../core/array-utils";
 
 export interface ConsolidatedRecommendation {
@@ -251,45 +250,5 @@ export class RecommendationConsolidator {
     }
 
     return annualSavings / effortMultiplier;
-  }
-
-  /**
-   * Log prioritization summary
-   */
-  private logPrioritizationSummary(recommendations: ConsolidatedRecommendation[]): void {
-    const summary = {
-      total: recommendations.length,
-      byPriority: ArrayUtils.groupByProperty(recommendations, "priority"),
-      bySource: ArrayUtils.groupByProperty(recommendations, "source"),
-      totalSavings: ArrayUtils.sumBy(recommendations, (r) => r.estimatedMonthlySavings),
-      topOpportunity: ArrayUtils.maxBy(recommendations, (r) => r.estimatedMonthlySavings),
-    };
-
-    logger.info("Prioritization summary", {
-      total: summary.total,
-      priorities: Object.keys(summary.byPriority).reduce(
-        (acc, key) => {
-          acc[key] = summary.byPriority[key].length;
-          return acc;
-        },
-        {} as Record<string, number>
-      ),
-      sources: Object.keys(summary.bySource).reduce(
-        (acc, key) => {
-          acc[key] = summary.bySource[key].length;
-          return acc;
-        },
-        {} as Record<string, number>
-      ),
-      totalMonthlySavings: summary.totalSavings.toFixed(2),
-      annualSavingsPotential: (summary.totalSavings * 12).toFixed(2),
-      topOpportunity: summary.topOpportunity
-        ? {
-            id: summary.topOpportunity.id,
-            actionType: summary.topOpportunity.actionType,
-            savings: summary.topOpportunity.estimatedMonthlySavings.toFixed(2),
-          }
-        : null,
-    });
   }
 }

@@ -1,12 +1,12 @@
 # Cost Analyzer Lambda
 
-The Cost Analyzer Lambda performs the monthly project-level FinOps analysis that powers the alerts and reports you receive. It runs automatically on a scheduled EventBridge rule and turns Cost Explorer data into consumable summaries per tag.
+The Cost Analyzer Lambda performs monthly FinOps analysis grouped by tag value. It runs automatically on a scheduled EventBridge rule and turns Cost Explorer data into consumable summaries per tag.
 
 ## Key responsibilities
 
 - Query `ce:GetCostAndUsage` once per run to fetch the configured granularity of usage.
 - Group costs by the tag(s) defined in `config/config.yml` (default: `group_by_tag`).
-- Build HTML and JSON reports (by project, service, and region) and push them to S3.
+- Build HTML and JSON reports (by tag value, service, and region) and push them to S3.
 - Send an HTML email via SES that links to the latest report in S3.
 
 ## APIs used
@@ -31,7 +31,7 @@ The Cost Analyzer Lambda performs the monthly project-level FinOps analysis that
 1. EventBridge cron invokes the handler.
 2. The lambda loads configuration & environment variables via `SimpleEnvLoader`.
 3. Cost Explorer is queried once per dimension (region/service/tag combination) to keep API usage low.
-4. Aggregated costs and project lists are packaged into structured payloads.
+4. Aggregated costs and grouped tag values are packaged into structured payloads.
 5. Reports are written as HTML/JSON in S3 and a summary email is sent via SES.
 
 ## Reports & storage
@@ -41,7 +41,7 @@ The Cost Analyzer Lambda performs the monthly project-level FinOps analysis that
 
 ## Observability
 
-- CloudWatch Logs capture the step-by-step progress and include metrics such as total cost and projects analyzed.
+- CloudWatch Logs capture the step-by-step progress and include metrics such as total cost and tag values analyzed.
 - Use `aws logs tail /aws/lambda/finops-cost-analyzer --follow` to stream live logs.
 
 ## Local verification
@@ -53,4 +53,4 @@ The Cost Analyzer Lambda performs the monthly project-level FinOps analysis that
 ## Performance notes
 
 - Cost Explorer calls are grouped per tag/region/service combination so that only the necessary APIs are hit.
-- Monthly granularity minimizes data volume while giving a complete project view.
+- Monthly granularity minimizes data volume while giving a complete grouped cost view.

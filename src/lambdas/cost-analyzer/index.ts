@@ -62,7 +62,7 @@ class CostAnalyzer {
           const pct = report.previousTotalCost > 0 ? (diff / report.previousTotalCost) * 100 : 100;
           return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
         })(),
-        "Tag Values": report.projects.length.toString(),
+        "Tag Values": report.groupedCosts.length.toString(),
         "🚨 Anomalies": report.anomalies.length.toString(),
         "🌍 Regions": HtmlReportBuilder.formatRegionsAnalyzed(
           report.regionalBreakdown.map((r) => r.region)
@@ -73,7 +73,7 @@ class CostAnalyzer {
     // Tag breakdown tables with top services
     const tagTables = report.tagBreakdowns
       .map((tb) =>
-        HtmlReportBuilder.buildCostBreakdownTable(tb.projects, tb.tagName, {
+        HtmlReportBuilder.buildCostBreakdownTable(tb.groupedCosts, tb.tagName, {
           costAllocationTagEnabled: tb.costAllocationTagEnabled,
           errorMessage: tb.errorMessage,
         })
@@ -83,11 +83,11 @@ class CostAnalyzer {
     // Zero cost tag values
     const zeroCostTables = report.tagBreakdowns
       .map((tb) => {
-        if (tb.zeroCostProjects.length === 0) {
+        if (tb.zeroCostGroupValues.length === 0) {
           return "";
         }
         return HtmlReportBuilder.buildList(
-          tb.zeroCostProjects,
+          tb.zeroCostGroupValues,
           `Tag values with $0 cost (tag: ${tb.tagName}):`
         );
       })
@@ -100,7 +100,7 @@ class CostAnalyzer {
             title: "🚨 Cost Anomalies Detected",
             note: "Significant cost increases compared to the same period in the previous month.",
             columns: [
-              { key: "project", label: "Tag Value" },
+              { key: "groupValue", label: "Tag Value" },
               {
                 key: "previousCost",
                 label: "Prev Cost (Last Mo)",

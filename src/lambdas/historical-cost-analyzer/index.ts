@@ -47,15 +47,15 @@ class HistoricalCostAnalyzer {
         totalSavings: report.totalCost, // Borrowing field for total cost
         itemCount: report.monthlyCosts.length,
         itemLabel: "📅 Months Analyzed",
-        topItem: report.topProjects[0]
-          ? { label: `🏆 Top ${groupLabel}`, value: report.topProjects[0].project }
+        topItem: report.topGroupValues[0]
+          ? { label: `🏆 Top ${groupLabel}`, value: report.topGroupValues[0].groupValue }
           : null,
         additionalMetrics: {
           "📈 Avg Monthly": `$${report.averageMonthlyCost.toFixed(2)}`,
           "📊 MoM Trend": `${report.trends.monthOverMonth > 0 ? "+" : ""}${report.trends.monthOverMonth.toFixed(1)}%`,
         },
       }),
-      HtmlReportBuilder.buildHistoricalCostTable(report.projectMonthlyCosts, groupLabel),
+      HtmlReportBuilder.buildHistoricalCostTable(report.groupedMonthlyCosts, groupLabel),
       HtmlReportBuilder.buildHistoricalCostTable(report.serviceMonthlyCosts, "Service"),
       HtmlReportBuilder.buildFooter({
         s3Url: reportLinks.jsonS3Url,
@@ -85,7 +85,7 @@ class HistoricalCostAnalyzer {
     return this.reportService.formatLambdaResponse("Historical cost analysis completed", {
       totalCost: report.totalCost,
       averageMonthly: report.averageMonthlyCost,
-      topGroupValue: report.topProjects[0]?.project || "N/A",
+      topGroupValue: report.topGroupValues[0]?.groupValue || "N/A",
       groupByTag: report.groupByTag,
       links,
     });

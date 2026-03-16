@@ -279,23 +279,4 @@ export class TagInventoryService {
 
     return matrix[str2.length][str1.length];
   }
-
-  /**
-   * Convert Sets to Arrays for JSON serialization
-   */
-  private static serializeTagUsage(tagUsage: TagUsage): any {
-    return {
-      ...tagUsage,
-      values: Array.from(tagUsage.values).slice(0, 10), // Limit to 10 values for readability
-      regions: Array.from(tagUsage.regions),
-      resourceTypes: Array.from(tagUsage.resourceTypes),
-    };
-  }
-
-  /**
-   * Convert all TagUsage objects for serialization
-   */
-  static serializeTagUsageStats(tagUsageStats: TagUsage[]): any[] {
-    return tagUsageStats.map((tag) => this.serializeTagUsage(tag));
-  }
 }

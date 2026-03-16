@@ -21,6 +21,7 @@ interface ConfigYaml {
   cost_analysis?: {
     group_by_tag?: string;
     total_monthly_threshold?: number;
+    group_value_thresholds?: Record<string, Record<string, number>>;
     project_thresholds?: Record<string, Record<string, number>>;
   };
   projects?: Record<
@@ -350,11 +351,11 @@ export class SimpleEnvLoader {
       return Object.keys(result).length > 0 ? result : undefined;
     };
 
-    let projectThresholds: Record<string, Record<string, number>> | undefined;
+    let groupValueThresholds: Record<string, Record<string, number>> | undefined;
     if (process.env.PROJECT_THRESHOLDS) {
       try {
         const parsed = JSON.parse(process.env.PROJECT_THRESHOLDS);
-        projectThresholds = normalizeThresholds(parsed);
+        groupValueThresholds = normalizeThresholds(parsed);
       } catch (error) {
         logger.warn("Could not parse PROJECT_THRESHOLDS env var", {
           error: error instanceof Error ? error : String(error),
@@ -362,12 +363,16 @@ export class SimpleEnvLoader {
       }
     }
 
-    if (!projectThresholds) {
-      projectThresholds = normalizeThresholds(configFile?.cost_analysis?.project_thresholds);
+    if (!groupValueThresholds) {
+      groupValueThresholds = normalizeThresholds(configFile?.cost_analysis?.group_value_thresholds);
     }
 
-    if (!projectThresholds) {
-      projectThresholds = thresholdsFromProjects(configFile?.projects);
+    if (!groupValueThresholds) {
+      groupValueThresholds = normalizeThresholds(configFile?.cost_analysis?.project_thresholds);
+    }
+
+    if (!groupValueThresholds) {
+      groupValueThresholds = thresholdsFromProjects(configFile?.projects);
     }
 
     const regionsEnv = process.env.REGIONS;
@@ -429,7 +434,8 @@ export class SimpleEnvLoader {
       cost_analysis: {
         group_by_tag: groupByTag,
         total_monthly_threshold: totalThreshold,
-        project_thresholds: projectThresholds,
+        group_value_thresholds: groupValueThresholds,
+        project_thresholds: groupValueThresholds,
       },
       required_tags: requiredTags,
       schedules: {

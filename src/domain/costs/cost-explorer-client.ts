@@ -1,6 +1,7 @@
 import {
   CostExplorerClient,
   GetCostAndUsageCommand,
+  GetCostAndUsageCommandOutput,
   GetCostAndUsageRequest,
   Dimension,
   GroupDefinition,
@@ -18,6 +19,27 @@ interface FilterOptions {
   excludeChargeTypes?: string[];
   includeRegions?: string[];
   excludeRegions?: string[];
+}
+
+export interface CostExplorerGroup {
+  Keys?: string[];
+  Metrics?: {
+    BlendedCost?: { Amount?: string };
+    UnblendedCost?: { Amount?: string };
+    UsageQuantity?: { Amount?: string };
+  };
+}
+
+export interface CostExplorerTimeResult {
+  TimePeriod?: {
+    Start?: string;
+    End?: string;
+  };
+  Groups?: CostExplorerGroup[];
+}
+
+export interface CostExplorerResult {
+  ResultsByTime?: CostExplorerTimeResult[];
 }
 
 /**
@@ -127,7 +149,7 @@ export class CostExplorerService {
   /**
    * Extract cost value from Cost Explorer group
    */
-  static extractCostValue(group: any): number {
+  static extractCostValue(group: CostExplorerGroup | undefined): number {
     if (!group || !group.Metrics) {
       return 0;
     }
@@ -166,39 +188,12 @@ export class CostExplorerService {
   /**
    * Extract group keys from Cost Explorer group
    */
-  static extractGroupKeys(group: any): string[] {
+  static extractGroupKeys(group: CostExplorerGroup | undefined): string[] {
     if (!group || !group.Keys) {
       return [];
     }
 
     return group.Keys || [];
-  }
-
-  /**
-   * Get monthly total costs (no GroupBy)
-   * Use this when you need a time-series and not a breakdown dimension.
-   */
-  async getMonthlyTotals(
-    startDate: Date,
-    endDate: Date,
-    filter?: GetCostAndUsageRequest["Filter"]
-  ): Promise<any> {
-    try {
-      const command = new GetCostAndUsageCommand({
-        TimePeriod: {
-          Start: startDate.toISOString().split("T")[0],
-          End: endDate.toISOString().split("T")[0],
-        },
-        Granularity: "MONTHLY",
-        Metrics: ["BlendedCost", "UnblendedCost", "UsageQuantity"],
-        Filter: filter,
-      });
-
-      return await (this.costExplorerClient as any).send(command);
-    } catch (error) {
-      logger.error("Failed to get monthly totals", error as Error);
-      throw error;
-    }
   }
 
   /**
@@ -216,7 +211,7 @@ export class CostExplorerService {
     startDate: Date,
     endDate: Date,
     filter?: GetCostAndUsageRequest["Filter"]
-  ): Promise<any> {
+  ): Promise<CostExplorerResult> {
     try {
       const groupBy: GroupDefinition[] = [];
 
@@ -243,7 +238,7 @@ export class CostExplorerService {
         Filter: filter,
       });
 
-      return await (this.costExplorerClient as any).send(command);
+      return (await this.costExplorerClient.send(command)) as GetCostAndUsageCommandOutput;
     } catch (error) {
       logger.error("Failed to get costs by dimension", error as Error, {
         dimensionType,
@@ -266,7 +261,7 @@ export class CostExplorerService {
     startDate: Date,
     endDate: Date,
     filter?: GetCostAndUsageRequest["Filter"]
-  ): Promise<any> {
+  ): Promise<CostExplorerResult> {
     try {
       const command = new GetCostAndUsageCommand({
         TimePeriod: {
@@ -288,7 +283,7 @@ export class CostExplorerService {
         Filter: filter,
       });
 
-      return await (this.costExplorerClient as any).send(command);
+      return (await this.costExplorerClient.send(command)) as GetCostAndUsageCommandOutput;
     } catch (error) {
       logger.error("Failed to get costs by service and tag", error as Error, { tagKey });
       throw error;
@@ -307,7 +302,7 @@ export class CostExplorerService {
     startDate: Date,
     endDate: Date,
     filter?: GetCostAndUsageRequest["Filter"]
-  ): Promise<any> {
+  ): Promise<CostExplorerResult> {
     try {
       const command = new GetCostAndUsageCommand({
         TimePeriod: {
@@ -323,7 +318,7 @@ export class CostExplorerService {
         Filter: filter,
       });
 
-      return await (this.costExplorerClient as any).send(command);
+      return (await this.costExplorerClient.send(command)) as GetCostAndUsageCommandOutput;
     } catch (error) {
       logger.error("Failed to get combined breakdown", error as Error);
       throw error;

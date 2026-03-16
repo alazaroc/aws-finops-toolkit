@@ -9,7 +9,7 @@ This document describes which phases of the FinOps framework this solution cover
 High coverage:
 
 - Automatic email reports with tag-based breakdown
-- Cost analysis by project and service
+- Cost analysis by tag value and service
 - Anomaly detection
 - Historical storage in S3
 

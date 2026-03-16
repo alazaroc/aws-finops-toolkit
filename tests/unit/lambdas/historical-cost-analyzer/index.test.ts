@@ -44,19 +44,6 @@ describe("historical-cost-analyzer handler", () => {
     jest.spyOn(SimpleEnvLoader, "getCurrentAccountId").mockResolvedValue("123456789012");
     jest.spyOn(SimpleEnvLoader, "getAccountName").mockResolvedValue("test-alias");
 
-    jest.spyOn(CostExplorerService.prototype, "getMonthlyTotals").mockResolvedValue({
-      ResultsByTime: [
-        {
-          TimePeriod: { Start: "2026-01-01" },
-          Total: { BlendedCost: { Amount: "100.00" } },
-        },
-        {
-          TimePeriod: { Start: "2026-02-01" },
-          Total: { BlendedCost: { Amount: "120.00" } },
-        },
-      ],
-    } as any);
-
     const getCostsByDimension = jest
       .spyOn(CostExplorerService.prototype, "getCostsByDimension")
       .mockResolvedValue({
@@ -125,18 +112,14 @@ describe("historical-cost-analyzer handler", () => {
       "project",
       expect.any(Date),
       expect.any(Date),
-      expect.objectContaining({
-        And: expect.arrayContaining([
-          expect.objectContaining({
-            Not: expect.objectContaining({
-              Dimensions: expect.objectContaining({
-                Key: "RECORD_TYPE",
-              }),
-            }),
-          }),
-        ]),
-      })
+      expect.anything()
     );
+
+    const ceFilter = getCostsByDimension.mock.calls[0][4];
+    const hasRecordTypeExclusion =
+      ceFilter?.Not?.Dimensions?.Key === "RECORD_TYPE" ||
+      ceFilter?.And?.some((entry: any) => entry?.Not?.Dimensions?.Key === "RECORD_TYPE");
+    expect(hasRecordTypeExclusion).toBe(true);
 
     const body = JSON.parse(result.body);
     expect(body.summary.links.htmlS3Url).toMatch(

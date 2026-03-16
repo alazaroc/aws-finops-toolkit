@@ -41,7 +41,7 @@ Direct Lambda invocation payload:
 
 - `monthsBack` (number, default `0`): 0=current month, 1=previous month, etc.
 - `periodLength` (number, default `6`): number of months to analyze (e.g. 1, 3, 6, 12).
-- `groupBy` (string, optional): tag key to group by (defaults to `cost_analysis.group_by_tag` or `"Project"`).
+- `groupBy` (string, optional): tag key to group by (defaults to `cost_analysis.group_by_tag`).
 - `includeHtml` (boolean, default `false`): if `true`, the response includes the full HTML document in-line (usually prefer the S3 links).
 
 If API Gateway endpoints are re-enabled in `template.yaml`, you can also pass `outputFormat: "json" | "html"` (or `Accept: text/html`) to return HTML directly from the HTTP response.

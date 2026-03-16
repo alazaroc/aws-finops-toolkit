@@ -2,7 +2,7 @@ import { logger } from "../../core/logger";
 import { ArrayUtils } from "../../core/array-utils";
 import { SimpleFinOpsConfig } from "../../types/finops-config";
 import { BaseCostService } from "./base-cost-service";
-import { CostExplorerService } from "./cost-explorer-client";
+import { CostExplorerGroup, CostExplorerResult, CostExplorerService } from "./cost-explorer-client";
 
 export type HistoricalCostOutputFormat = "json" | "html";
 
@@ -17,7 +17,7 @@ export interface HistoricalCostRequest {
 export interface MonthlyCostData {
   month: string;
   totalCost: number;
-  projectBreakdown: Record<string, number>;
+  groupBreakdown: Record<string, number>;
   serviceBreakdown: Record<string, number>;
 }
 
@@ -32,8 +32,8 @@ export interface HistoricalCostReport {
     monthsAnalyzed: number;
   };
   monthlyCosts: MonthlyCostData[];
-  projectMonthlyCosts: Array<{
-    project: string;
+  groupedMonthlyCosts: Array<{
+    groupValue: string;
     monthlyCosts: Record<string, number>;
     totalCost: number;
   }>;
@@ -53,7 +53,7 @@ export interface HistoricalCostReport {
     monthOverMonth: number;
     quarterOverQuarter?: number;
   };
-  topProjects: Array<{ project: string; cost: number; percentage: number }>;
+  topGroupValues: Array<{ groupValue: string; cost: number; percentage: number }>;
   topServices: Array<{ service: string; cost: number; percentage: number }>;
 }
 
@@ -128,10 +128,10 @@ export class HistoricalCostService extends BaseCostService {
     startDate: Date,
     endDate: Date,
     groupByTag: string
-  ): Promise<any> {
+  ): Promise<{ byTag: CostExplorerResult; combined: CostExplorerResult }> {
     const filter = this.getCommonFilters();
 
-    // Fetch data by tag (for project breakdown) and combined region+service (for everything else)
+    // Fetch data by tag (for grouped breakdown) and combined region+service (for everything else)
     const [tagData, combinedData] = await Promise.all([
       this.costExplorer.getCostsByDimension("TAG", groupByTag, startDate, endDate, filter),
       this.costExplorer.getCombinedRegionAndServiceBreakdown(startDate, endDate, filter),
@@ -147,7 +147,7 @@ export class HistoricalCostService extends BaseCostService {
    * Process historical data into report format
    */
   private processHistoricalData(
-    costData: any,
+    costData: { byTag: CostExplorerResult; combined: CostExplorerResult },
     startDate: Date,
     endDate: Date,
     groupByTag: string
@@ -161,9 +161,9 @@ export class HistoricalCostService extends BaseCostService {
 
     const months = monthlyCosts.map((m) => m.month);
 
-    const projectMonthlyCosts = this.processMonthlyCostGroups(costData.byTag, months, (group) =>
+    const groupedMonthlyCosts = this.processMonthlyCostGroups(costData.byTag, months, (group) =>
       CostExplorerService.normalizeTagValue(CostExplorerService.extractGroupKeys(group)[0])
-    ).map(({ key, monthlyCosts, totalCost }) => ({ project: key, monthlyCosts, totalCost }));
+    ).map(({ key, monthlyCosts, totalCost }) => ({ groupValue: key, monthlyCosts, totalCost }));
 
     // Calculate totals and averages
     const totalCost = ArrayUtils.sumBy(monthlyCosts, (m) => m.totalCost);
@@ -172,8 +172,8 @@ export class HistoricalCostService extends BaseCostService {
     // Calculate trends
     const trends = this.calculateTrends(monthlyCosts);
 
-    // Get top projects and services
-    const topProjects = this.getTopProjects(projectMonthlyCosts, totalCost);
+    // Get top grouped values and services
+    const topGroupValues = this.getTopGroupValues(groupedMonthlyCosts, totalCost);
     const topServices = this.getTopServices(serviceMonthlyCosts, totalCost);
 
     return {
@@ -187,13 +187,13 @@ export class HistoricalCostService extends BaseCostService {
         monthsAnalyzed: monthlyCosts.length,
       },
       monthlyCosts,
-      projectMonthlyCosts,
+      groupedMonthlyCosts,
       serviceMonthlyCosts,
       regionMonthlyCosts,
       totalCost,
       averageMonthlyCost,
       trends,
-      topProjects,
+      topGroupValues,
       topServices,
     };
   }
@@ -203,7 +203,7 @@ export class HistoricalCostService extends BaseCostService {
    * This allows us to use 1 API call instead of 3.
    */
   private processCombinedData(
-    combinedData: any,
+    combinedData: CostExplorerResult,
     months: string[]
   ): {
     monthlyCosts: MonthlyCostData[];
@@ -268,7 +268,7 @@ export class HistoricalCostService extends BaseCostService {
     const monthlyCosts: MonthlyCostData[] = finalMonths.map((month) => ({
       month,
       totalCost: monthlyTotalMap.get(month) || 0,
-      projectBreakdown: {}, // Not populated here
+      groupBreakdown: {}, // Not populated here
       serviceBreakdown: {}, // Not populated here
     }));
 
@@ -341,9 +341,9 @@ export class HistoricalCostService extends BaseCostService {
    * Build a normalized monthly breakdown per key from Cost Explorer ResultsByTime.
    */
   private processMonthlyCostGroups(
-    data: any,
+    data: CostExplorerResult,
     months: string[],
-    getKey: (group: any) => string
+    getKey: (group: CostExplorerGroup) => string
   ): Array<{ key: string; monthlyCosts: Record<string, number>; totalCost: number }> {
     const map = new Map<string, Record<string, number>>();
 
@@ -387,14 +387,14 @@ export class HistoricalCostService extends BaseCostService {
     return ArrayUtils.sortBy(result, (a, b) => b.totalCost - a.totalCost);
   }
 
-  private getTopProjects(
-    projects: Array<{ project: string; cost?: number; totalCost: number }>,
+  private getTopGroupValues(
+    groupedCosts: Array<{ groupValue: string; cost?: number; totalCost: number }>,
     totalCost: number
-  ): Array<{ project: string; cost: number; percentage: number }> {
-    return projects.slice(0, 10).map((p) => ({
-      project: p.project,
-      cost: p.totalCost,
-      percentage: totalCost > 0 ? (p.totalCost / totalCost) * 100 : 0,
+  ): Array<{ groupValue: string; cost: number; percentage: number }> {
+    return groupedCosts.slice(0, 10).map((groupedCost) => ({
+      groupValue: groupedCost.groupValue,
+      cost: groupedCost.totalCost,
+      percentage: totalCost > 0 ? (groupedCost.totalCost / totalCost) * 100 : 0,
     }));
   }
 

@@ -28,7 +28,7 @@ describe("CostAnalyzer Lambda", () => {
       previousTotalCost: 100.0,
       periodStart: new Date(),
       periodEnd: new Date(),
-      projects: [],
+      groupedCosts: [],
       tagBreakdowns: [],
       anomalies: [],
       regionalBreakdown: [],
@@ -59,7 +59,7 @@ describe("CostAnalyzer Lambda", () => {
     const html = HtmlReportBuilder.buildCostBreakdownTable(
       [
         {
-          project: "untagged",
+          groupValue: "untagged",
           cost: 105.91,
           previousCost: 123.93,
           threshold: 100,

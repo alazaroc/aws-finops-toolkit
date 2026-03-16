@@ -64,7 +64,7 @@ export class ComplianceService {
       }));
 
       // Combine results from all regions
-      const combinedResult = this.combineRegionResults(regionResults, regions);
+      const combinedResult = this.combineRegionResults(regionResults);
 
       return combinedResult;
     } catch (error) {
