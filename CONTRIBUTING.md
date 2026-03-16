@@ -36,12 +36,13 @@ Thanks for your interest in contributing. This guide describes how to get starte
 - Node.js 22+
 - AWS CLI configured
 - AWS SAM CLI installed
-git clone https://github.com/alazaroc/aws-finops-toolkit.git
-cd aws-finops-toolkit
-npm install
-npm test
-npm run build
-npm run lint
+  git clone https://github.com/alazaroc/aws-finops-toolkit.git
+  cd aws-finops-toolkit
+  npm install
+  npm test
+  npm run build
+  npm run lint
+
 ```
 
 ## Code standards
@@ -62,18 +63,20 @@ npm run lint
 ### File organization
 
 ```
+
 src/
-  core/           # Shared core utilities (Config, Logger, etc.)
-  domain/         # Business logic (Cost analysis, Compliance rules, etc.)
-  infrastructure/ # Infrastructure services (HTML Building, S3, SES, etc.)
-  lambdas/        # Lambda entry points
-    compliance-checker/
-    cost-analyzer/
-    historical-cost-analyzer/
-    optimization-insights/
-    tag-inventory/
-  types/          # Shared Type definitions
-```
+core/ # Shared core utilities (Config, Logger, etc.)
+domain/ # Business logic (Cost analysis, Compliance rules, etc.)
+infrastructure/ # Infrastructure services (HTML Building, S3, SES, etc.)
+lambdas/ # Lambda entry points
+compliance-checker/
+cost-analyzer/
+historical-cost-analyzer/
+optimization-insights/
+tag-inventory/
+types/ # Shared Type definitions
+
+````
 
 ### Error handling
 
@@ -85,7 +88,7 @@ try {
   console.error("Operation failed:", error);
   throw new Error(`Failed to perform operation: ${error.message}`);
 }
-```
+````
 
 ### Logging
 

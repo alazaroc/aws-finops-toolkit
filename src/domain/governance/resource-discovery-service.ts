@@ -24,10 +24,8 @@ export class ResourceService {
 
     try {
       let paginationToken: string | undefined;
-      let pageCount = 0;
 
       do {
-        pageCount++;
         const command = new GetResourcesCommand({
           ResourcesPerPage: 100,
           PaginationToken: paginationToken,

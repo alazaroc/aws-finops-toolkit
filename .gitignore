@@ -63,3 +63,4 @@ response-*.json
 
 # Configuration (keep secrets out of git)
 config/config.yml
+config/config-*.yml

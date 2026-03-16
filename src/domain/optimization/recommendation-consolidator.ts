@@ -44,9 +44,6 @@ export class RecommendationConsolidator {
     // Filter out invalid recommendations
     const valid = normalized.filter((rec) => rec && rec.estimatedMonthlySavings > 0);
 
-    // Consolidation logic
-    return valid;
-
     return valid;
   }
 
@@ -68,7 +65,6 @@ export class RecommendationConsolidator {
         const shouldReplace = this.shouldReplaceRecommendation(existing, recommendation);
         if (shouldReplace) {
           resourceMap.set(key, recommendation);
-        } else {
         }
       }
     }

@@ -264,9 +264,14 @@ export class SimpleEnvLoader {
       }
     }
 
-    // Get group_by_tag: env > config file > default
+    const configuredRequiredTags = configFile?.required_tags?.filter(Boolean) || [];
+
+    // Get group_by_tag: env > config file > first required tag > default
     const groupByTagEnv =
-      process.env.GROUP_BY_TAG || configFile?.cost_analysis?.group_by_tag || "project";
+      process.env.GROUP_BY_TAG ||
+      configFile?.cost_analysis?.group_by_tag ||
+      configuredRequiredTags[0] ||
+      "project";
     const groupByTag = groupByTagEnv.includes(",")
       ? groupByTagEnv.split(",").map((t) => t.trim())
       : groupByTagEnv;
@@ -388,7 +393,7 @@ export class SimpleEnvLoader {
     // Get required_tags: env > config file > default
     const requiredTags = process.env.REQUIRED_TAGS
       ? process.env.REQUIRED_TAGS.split(",").map((t) => t.trim())
-      : configFile?.required_tags || ["project"];
+      : configFile?.required_tags || [];
 
     // Get schedules: env > config file > default
     const costScheduleFromConfig =

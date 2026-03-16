@@ -148,19 +148,6 @@ const tagInventoryEnabled = lambdas.tag_inventory?.enabled !== false;
 const historicalCostAnalyzerEnabled = lambdas.historical_cost_analyzer?.enabled !== false;
 const optimizationInsightsEnabled = lambdas.optimization_insights?.enabled !== false;
 
-const costAnalysis = config.cost_analysis || {};
-const groupByTag = String(costAnalysis.group_by_tag || "project")
-  .split(",")
-  .map((t) => t.trim())
-  .filter(Boolean)
-  .join(",");
-
-const totalThreshold = requireNumber(
-  costAnalysis.total_monthly_threshold,
-  "cost_analysis.total_monthly_threshold",
-  100.0
-);
-
 const requiredTags = Array.isArray(config.required_tags)
   ? config.required_tags.map((t) => String(t).trim()).filter(Boolean)
   : String(config.required_tags || "")
@@ -171,6 +158,19 @@ const requiredTags = Array.isArray(config.required_tags)
 if (requiredTags.length === 0) {
   throw new Error("Missing required config: required_tags");
 }
+
+const costAnalysis = config.cost_analysis || {};
+const groupByTag = String(costAnalysis.group_by_tag || requiredTags[0] || "project")
+  .split(",")
+  .map((t) => t.trim())
+  .filter(Boolean)
+  .join(",");
+
+const totalThreshold = requireNumber(
+  costAnalysis.total_monthly_threshold,
+  "cost_analysis.total_monthly_threshold",
+  100.0
+);
 
 const regions = Array.isArray(config.regions)
   ? config.regions.map((r) => String(r).trim()).filter(Boolean)
@@ -352,7 +352,8 @@ function normalizeTags(rawTags) {
   return [];
 }
 
-const defaultTags = [{ key: "project", value: "finops-toolkit" }];
+const primaryGroupByTag = groupByTag.split(",")[0]?.trim() || "project";
+const defaultTags = [{ key: primaryGroupByTag, value: "finops-toolkit" }];
 const tagEntries = normalizeTags(config.tags || config.resource_tags);
 const mergedTags = tagEntries.length > 0 ? tagEntries : defaultTags;
 const tagsByKey = new Map();

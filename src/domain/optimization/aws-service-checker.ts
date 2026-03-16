@@ -55,7 +55,9 @@ export class AwsServiceChecker {
     factory: () => Promise<ServiceAvailabilityStatus>
   ): Promise<ServiceAvailabilityStatus> {
     const existing = this.cachedChecks[key];
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
 
     const created = factory().catch((error) => {
       delete this.cachedChecks[key];
@@ -84,8 +86,6 @@ export class AwsServiceChecker {
         computeOptimizer,
       },
     };
-
-    return report;
 
     return report;
   }

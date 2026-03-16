@@ -835,23 +835,30 @@ export class HtmlReportBuilder {
   /**
    * Build cost breakdown table with top services
    */
-  static buildCostBreakdownTable(data: any[], tagName: string): string {
+  static buildCostBreakdownTable(
+    data: any[],
+    tagName: string,
+    options: { costAllocationTagEnabled?: boolean; errorMessage?: string } = {}
+  ): string {
     if (data.length === 0) {
       return "";
     }
 
+    const costAllocationTagEnabled = options.costAllocationTagEnabled !== false;
     let html = `<h3>Cost Breakdown by Tag: ${tagName}</h3>\n`;
+    if (!costAllocationTagEnabled && options.errorMessage) {
+      html += `<p class="table-note" style="color: #b91c1c; font-weight: 700;">${options.errorMessage}</p>\n`;
+    }
     html += `
         <div class="table-container">
         <table>
             <tr>
-                <th>${tagName}</th>
                 <th>Cost</th>
                 <th>Prev. Mo</th>
                 <th>Δ %</th>
                 <th>Threshold</th>
                 <th>Status</th>
-                <th>Top Services</th>
+                ${costAllocationTagEnabled ? `<th>${tagName}</th><th>Top Services</th>` : ""}
             </tr>
     `;
 
@@ -870,7 +877,6 @@ export class HtmlReportBuilder {
 
       html += `
             <tr>
-                <td><strong>${item.project || "Unknown"}</strong></td>
                 <td style="font-weight: 600;">$${item.cost.toFixed(2)}</td>
                 <td style="color: #6b7280;">$${prevCost.toFixed(2)}</td>
                 <td style="color: ${changeColor}; font-weight: 500;">
@@ -878,7 +884,7 @@ export class HtmlReportBuilder {
                 </td>
                 <td>$${item.threshold}</td>
                 <td>${status}</td>
-                <td style="font-size: 0.85em; color: #4b5563;">${topServicesHtml}</td>
+                ${costAllocationTagEnabled ? `<td><strong>${item.project || "Unknown"}</strong></td><td style="font-size: 0.85em; color: #4b5563;">${topServicesHtml}</td>` : ""}
             </tr>
       `;
     }

@@ -25,6 +25,10 @@ class CostAnalyzer {
   }
 
   async runAnalysis(): Promise<CostAnalysisReport> {
+    logger.info("Running cost analysis", {
+      groupByTag: this.config.cost_analysis.group_by_tag,
+      regions: this.config.regions,
+    });
     return await this.costAnalysisService.analyzeCosts();
   }
 
@@ -58,7 +62,7 @@ class CostAnalyzer {
           const pct = report.previousTotalCost > 0 ? (diff / report.previousTotalCost) * 100 : 100;
           return `${pct > 0 ? "+" : ""}${pct.toFixed(1)}%`;
         })(),
-        "📁 Projects": report.projects.length.toString(),
+        "Tag Values": report.projects.length.toString(),
         "🚨 Anomalies": report.anomalies.length.toString(),
         "🌍 Regions": HtmlReportBuilder.formatRegionsAnalyzed(
           report.regionalBreakdown.map((r) => r.region)
@@ -68,16 +72,23 @@ class CostAnalyzer {
 
     // Tag breakdown tables with top services
     const tagTables = report.tagBreakdowns
-      .map((tb) => HtmlReportBuilder.buildCostBreakdownTable(tb.projects, tb.tagName))
+      .map((tb) =>
+        HtmlReportBuilder.buildCostBreakdownTable(tb.projects, tb.tagName, {
+          costAllocationTagEnabled: tb.costAllocationTagEnabled,
+          errorMessage: tb.errorMessage,
+        })
+      )
       .join("");
 
-    // Zero cost projects
+    // Zero cost tag values
     const zeroCostTables = report.tagBreakdowns
       .map((tb) => {
-        if (tb.zeroCostProjects.length === 0) return "";
+        if (tb.zeroCostProjects.length === 0) {
+          return "";
+        }
         return HtmlReportBuilder.buildList(
           tb.zeroCostProjects,
-          `Projects with $0 cost (tag: ${tb.tagName}):`
+          `Tag values with $0 cost (tag: ${tb.tagName}):`
         );
       })
       .join("");
@@ -89,7 +100,7 @@ class CostAnalyzer {
             title: "🚨 Cost Anomalies Detected",
             note: "Significant cost increases compared to the same period in the previous month.",
             columns: [
-              { key: "project", label: "Project" },
+              { key: "project", label: "Tag Value" },
               {
                 key: "previousCost",
                 label: "Prev Cost (Last Mo)",

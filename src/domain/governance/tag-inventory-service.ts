@@ -1,7 +1,3 @@
-import {
-  ResourceGroupsTaggingAPIClient,
-  GetResourcesCommand,
-} from "@aws-sdk/client-resource-groups-tagging-api";
 import { logger } from "../../core/logger";
 import { ArrayUtils } from "../../core/array-utils";
 import { ArnParser } from "../../core/arn-parser";
@@ -217,7 +213,7 @@ export class TagInventoryService {
   private extractResourceType(arn: string): string {
     try {
       return ArnParser.extractResourceType(arn);
-    } catch (error) {
+    } catch {
       logger.warn("Failed to extract resource type from ARN", { arn });
 
       // Fallback: extract from ARN structure

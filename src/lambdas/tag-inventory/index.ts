@@ -231,7 +231,7 @@ class TagInventoryAnalyzer {
   }
 }
 
-export const handler: Handler<ScheduledEvent, any> = async (event, context) => {
+export const handler: Handler<ScheduledEvent, any> = async () => {
   try {
     const config = await TagInventoryAnalyzer.loadConfig();
     const analyzer = new TagInventoryAnalyzer(config);

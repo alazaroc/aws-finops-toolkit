@@ -184,7 +184,9 @@ aws lambda invoke --function-name finops-historical-cost-analyzer --payload '{\"
 ## Useful Commands
 
 ### Check Logs
+
 Use the included script to scan for errors across all functions:
+
 ```bash
 ./scripts/check-lambda-logs.sh 60 errors
 ```

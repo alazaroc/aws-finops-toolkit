@@ -26,6 +26,8 @@ export interface TagBreakdown {
   tagName: string;
   projects: CostData[];
   zeroCostProjects: string[];
+  costAllocationTagEnabled: boolean;
+  errorMessage?: string;
 }
 
 export interface CostAnalysisReport {
@@ -103,6 +105,7 @@ export class CostAnalysisService extends BaseCostService {
         endExclusive
       );
 
+      this.logTagCoverageWarnings(report);
       return report;
     } catch (error) {
       logger.error("Cost analysis service failed", error as Error);
@@ -130,7 +133,7 @@ export class CostAnalysisService extends BaseCostService {
       // This prevents timezone shifts when converting to ISO string (e.g. Dec 31st issue)
       startDate = new Date(Date.UTC(year, month - 1, 1));
       endDate = new Date(Date.UTC(year, month, 1)); // 1st of current month (exclusive)
-      
+
       // We set this to true so the presentation layer knows to subtract 1 day
       // and display "Jan 1 - Jan 31" instead of "Jan 1 - Feb 1"
       endExclusive = true;
@@ -217,7 +220,9 @@ export class CostAnalysisService extends BaseCostService {
 
     if (serviceData?.ResultsByTime) {
       for (const timeResult of serviceData.ResultsByTime) {
-        if (!timeResult.Groups) continue;
+        if (!timeResult.Groups) {
+          continue;
+        }
         for (const group of timeResult.Groups) {
           const keys = CostExplorerService.extractGroupKeys(group);
           const projectName = CostExplorerService.normalizeTagValue(keys[0]);
@@ -277,7 +282,16 @@ export class CostAnalysisService extends BaseCostService {
         prevCosts
       );
 
-      tagBreakdowns.push({ tagName, projects, zeroCostProjects });
+      const costAllocationTagEnabled = this.isCostAllocationTagEnabled(projects);
+      tagBreakdowns.push({
+        tagName,
+        projects,
+        zeroCostProjects,
+        costAllocationTagEnabled,
+        errorMessage: costAllocationTagEnabled
+          ? undefined
+          : `Cost Allocation Tag may not be enabled for tag ${tagName}. AWS Cost Explorer returned only untagged costs for this grouping.`,
+      });
       allProjects = allProjects.concat(projects);
     }
 
@@ -318,7 +332,9 @@ export class CostAnalysisService extends BaseCostService {
 
     if (serviceCosts?.ResultsByTime) {
       for (const timeResult of serviceCosts.ResultsByTime) {
-        if (!timeResult.Groups) continue;
+        if (!timeResult.Groups) {
+          continue;
+        }
 
         for (const group of timeResult.Groups) {
           const keys = CostExplorerService.extractGroupKeys(group);
@@ -526,5 +542,31 @@ export class CostAnalysisService extends BaseCostService {
       }
     }
     return undefined;
+  }
+
+  private logTagCoverageWarnings(report: CostAnalysisReport): void {
+    for (const breakdown of report.tagBreakdowns) {
+      if (breakdown.projects.length === 0) {
+        logger.warn("Cost analysis returned no grouped tag values", {
+          tagName: breakdown.tagName,
+        });
+        continue;
+      }
+
+      if (!breakdown.costAllocationTagEnabled) {
+        logger.warn("All costs were grouped as untagged for the configured tag", {
+          tagName: breakdown.tagName,
+          hint: "Verify the tag key is activated as a Cost Allocation Tag in AWS Billing and that cost data has had time to refresh.",
+        });
+      }
+    }
+  }
+
+  private isCostAllocationTagEnabled(projects: CostData[]): boolean {
+    if (projects.length === 0) {
+      return true;
+    }
+
+    return projects.some((project) => project.project.toLowerCase() !== "untagged");
   }
 }

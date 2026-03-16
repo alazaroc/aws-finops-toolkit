@@ -3,7 +3,6 @@ import { SimpleFinOpsConfig } from "../../types/finops-config";
 import { SimpleEnvLoader } from "../../core/config-loader";
 import { logger } from "../../core/logger";
 import { EmailService } from "../../infrastructure/email-service";
-import { ReportStorage } from "../../infrastructure/storage-service";
 import { HtmlReportBuilder } from "../../infrastructure/html-builder";
 import {
   OptimizationService,

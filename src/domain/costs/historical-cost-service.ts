@@ -9,7 +9,7 @@ export type HistoricalCostOutputFormat = "json" | "html";
 export interface HistoricalCostRequest {
   monthsBack?: number; // 0 = current month, 1 = last month, etc.
   periodLength?: number; // 1 = single month, 3 = quarterly, 12 = yearly
-  groupBy?: string; // tag to group by (default: project)
+  groupBy?: string; // tag to group by
   outputFormat?: HistoricalCostOutputFormat; // API Gateway only (default: json)
   includeHtml?: boolean; // direct invocation only (default: false)
 }
@@ -25,6 +25,7 @@ export interface HistoricalCostReport {
   reportDate: Date;
   accountId: string;
   accountAlias?: string;
+  groupByTag: string;
   period: {
     startDate: string;
     endDate: string;
@@ -96,9 +97,11 @@ export class HistoricalCostService extends BaseCostService {
     // End date is 1st of (current month - monthsBack)
     // Use Date.UTC to ensure "YYYY-MM-01" exactly
     const endDate = new Date(Date.UTC(year, month - monthsBack, 1));
-    
+
     // Start date is periodLength months before endDate
-    const startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - periodLength + 1, 1));
+    const startDate = new Date(
+      Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() - periodLength + 1, 1)
+    );
 
     // If monthsBack is 0 (current month), we typically want to see month-to-date data.
     // However, for historical analysis, full months are better.
@@ -113,9 +116,9 @@ export class HistoricalCostService extends BaseCostService {
   private getDefaultGroupByTag(): string {
     const groupByTag = this.config.cost_analysis?.group_by_tag;
     if (Array.isArray(groupByTag)) {
-      return groupByTag[0] || "Project";
+      return groupByTag[0] || "project";
     }
-    return groupByTag || "Project";
+    return groupByTag || "project";
   }
 
   /**
@@ -177,6 +180,7 @@ export class HistoricalCostService extends BaseCostService {
       reportDate: new Date(),
       accountId: this.getAccountId(),
       accountAlias: this.config.account_alias,
+      groupByTag,
       period: {
         startDate: startDate.toISOString().split("T")[0],
         endDate: endDate.toISOString().split("T")[0],
@@ -222,7 +226,9 @@ export class HistoricalCostService extends BaseCostService {
     if (combinedData?.ResultsByTime) {
       for (const timeResult of combinedData.ResultsByTime) {
         const month = timeResult.TimePeriod?.Start;
-        if (!month) continue;
+        if (!month) {
+          continue;
+        }
         uniqueMonths.add(month);
 
         const groups = timeResult.Groups || [];
@@ -237,11 +243,15 @@ export class HistoricalCostService extends BaseCostService {
           monthTotal += cost;
 
           // Aggregations
-          if (!serviceMap.has(service)) serviceMap.set(service, {});
+          if (!serviceMap.has(service)) {
+            serviceMap.set(service, {});
+          }
           const sEntry = serviceMap.get(service)!;
           sEntry[month] = (sEntry[month] || 0) + cost;
 
-          if (!regionMap.has(region)) regionMap.set(region, {});
+          if (!regionMap.has(region)) {
+            regionMap.set(region, {});
+          }
           const rEntry = regionMap.get(region)!;
           rEntry[month] = (rEntry[month] || 0) + cost;
         }
@@ -343,7 +353,9 @@ export class HistoricalCostService extends BaseCostService {
 
     for (const timeResult of data.ResultsByTime) {
       const month = timeResult.TimePeriod?.Start;
-      if (!month) continue;
+      if (!month) {
+        continue;
+      }
       const groups = timeResult.Groups || [];
       for (const group of groups) {
         const key = getKey(group) || "Unknown";

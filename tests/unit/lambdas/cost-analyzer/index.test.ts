@@ -3,6 +3,7 @@ import { CostAnalysisService } from "../../../../src/domain/costs/cost-analysis-
 import { EmailService } from "../../../../src/infrastructure/email-service";
 import { FinOpsReportService } from "../../../../src/infrastructure/report-delivery-service";
 import { SimpleEnvLoader } from "../../../../src/core/config-loader";
+import { HtmlReportBuilder } from "../../../../src/infrastructure/html-builder";
 
 describe("CostAnalyzer Lambda", () => {
   beforeEach(() => {
@@ -52,5 +53,39 @@ describe("CostAnalyzer Lambda", () => {
 
     const sentSubject = emailSpy.mock.calls[0][1] as string;
     expect(sentSubject).toContain("$150.50");
+  });
+
+  it("renders cost allocation tag error when costs are fully untagged", () => {
+    const html = HtmlReportBuilder.buildCostBreakdownTable(
+      [
+        {
+          project: "untagged",
+          cost: 105.91,
+          previousCost: 123.93,
+          threshold: 100,
+          isOverThreshold: true,
+          topServices: [{ service: "Amazon OpenSearch Service", cost: 25.67 }],
+        },
+      ],
+      "CodiInap",
+      {
+        costAllocationTagEnabled: false,
+        errorMessage:
+          "Cost Allocation Tag may not be enabled for tag CodiInap. AWS Cost Explorer returned only untagged costs for this grouping.",
+      }
+    );
+
+    expect(html).toContain(
+      "Cost Allocation Tag may not be enabled for tag CodiInap. AWS Cost Explorer returned only untagged costs for this grouping."
+    );
+    expect(html).toContain("<th>Cost</th>");
+    expect(html).toContain("<th>Prev. Mo</th>");
+    expect(html).toContain("<th>Δ %</th>");
+    expect(html).toContain("<th>Threshold</th>");
+    expect(html).toContain("<th>Status</th>");
+    expect(html).not.toContain("<th>CodiInap</th>");
+    expect(html).not.toContain("<th>Top Services</th>");
+    expect(html).not.toContain("<strong>untagged</strong>");
+    expect(html).not.toContain("Amazon OpenSearch Service");
   });
 });

@@ -1,7 +1,3 @@
-import {
-  ResourceGroupsTaggingAPIClient,
-  GetResourcesCommand,
-} from "@aws-sdk/client-resource-groups-tagging-api";
 import { logger } from "../../core/logger";
 import { ArrayUtils } from "../../core/array-utils";
 import { ArnParser } from "../../core/arn-parser";
@@ -125,8 +121,7 @@ export class ComplianceService {
       region: string;
       resources: ResourceTagMapping[];
       nonCompliantResources: ComplianceResource[];
-    }>,
-    regions: string[]
+    }>
   ): ComplianceAnalysisResult {
     // Flatten all resources and non-compliant resources
     const allResources = regionResults.flatMap((result) => result.resources);
@@ -166,7 +161,7 @@ export class ComplianceService {
   private extractResourceType(arn: string): string {
     try {
       return ArnParser.extractResourceType(arn);
-    } catch (error) {
+    } catch {
       logger.warn("Failed to extract resource type from ARN", { arn });
 
       // Fallback: extract from ARN structure
@@ -205,7 +200,7 @@ export class ComplianceService {
       if (parts.length >= 5 && parts[4]) {
         return parts[4];
       }
-    } catch (error) {
+    } catch {
       logger.warn("Failed to extract account ID from ARN", { arn });
     }
 
@@ -284,7 +279,9 @@ export class ComplianceService {
 
     for (const resource of nonCompliantResources) {
       for (const tag of resource.tags || []) {
-        if (!tag.key) continue;
+        if (!tag.key) {
+          continue;
+        }
         const value = tag.value ?? "";
         if (!tagValueCounts[tag.key]) {
           tagValueCounts[tag.key] = {};

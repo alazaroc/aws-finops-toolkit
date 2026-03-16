@@ -8,7 +8,6 @@ import { RegionDiscoveryService } from "../../domain/governance/region-service";
 import { FinOpsReportService, ReportLinks } from "../../infrastructure/report-delivery-service";
 import {
   ComplianceService,
-  ComplianceResource,
   ComplianceAnalysisResult,
 } from "../../domain/governance/compliance-service";
 
@@ -217,7 +216,7 @@ class ComplianceChecker {
   }
 }
 
-export const handler: Handler<ScheduledEvent, any> = async (event, context) => {
+export const handler: Handler<ScheduledEvent, any> = async () => {
   try {
     const config = await ComplianceChecker.loadConfig();
     const checker = new ComplianceChecker(config);

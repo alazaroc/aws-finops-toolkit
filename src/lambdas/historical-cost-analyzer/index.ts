@@ -1,8 +1,7 @@
-import { Handler, APIGatewayProxyEvent } from "aws-lambda";
+import { Handler } from "aws-lambda";
 import { SimpleFinOpsConfig } from "../../types/finops-config";
 import { SimpleEnvLoader } from "../../core/config-loader";
 import { logger } from "../../core/logger";
-import { ArrayUtils } from "../../core/array-utils";
 import { HtmlReportBuilder } from "../../infrastructure/html-builder";
 import { FinOpsReportService, ReportLinks } from "../../infrastructure/report-delivery-service";
 import {
@@ -34,6 +33,7 @@ class HistoricalCostAnalyzer {
     const accountDisplay = report.accountAlias
       ? `${report.accountId} (${report.accountAlias})`
       : report.accountId;
+    const groupLabel = report.groupByTag || "Tag Value";
 
     const isFiltered = !!this.config.regions?.length;
     const body = [
@@ -48,14 +48,14 @@ class HistoricalCostAnalyzer {
         itemCount: report.monthlyCosts.length,
         itemLabel: "📅 Months Analyzed",
         topItem: report.topProjects[0]
-          ? { label: "🏆 Top Project", value: report.topProjects[0].project }
+          ? { label: `🏆 Top ${groupLabel}`, value: report.topProjects[0].project }
           : null,
         additionalMetrics: {
           "📈 Avg Monthly": `$${report.averageMonthlyCost.toFixed(2)}`,
           "📊 MoM Trend": `${report.trends.monthOverMonth > 0 ? "+" : ""}${report.trends.monthOverMonth.toFixed(1)}%`,
         },
       }),
-      HtmlReportBuilder.buildHistoricalCostTable(report.projectMonthlyCosts, "Project"),
+      HtmlReportBuilder.buildHistoricalCostTable(report.projectMonthlyCosts, groupLabel),
       HtmlReportBuilder.buildHistoricalCostTable(report.serviceMonthlyCosts, "Service"),
       HtmlReportBuilder.buildFooter({
         s3Url: reportLinks.jsonS3Url,
@@ -85,7 +85,8 @@ class HistoricalCostAnalyzer {
     return this.reportService.formatLambdaResponse("Historical cost analysis completed", {
       totalCost: report.totalCost,
       averageMonthly: report.averageMonthlyCost,
-      topProject: report.topProjects[0]?.project || "N/A",
+      topGroupValue: report.topProjects[0]?.project || "N/A",
+      groupByTag: report.groupByTag,
       links,
     });
   }
@@ -99,7 +100,9 @@ class HistoricalCostAnalyzer {
  * Robust request parsing for Historical Cost Analyzer
  */
 export function parseHistoricalCostRequest(event: any): HistoricalCostRequest {
-  if (!event) return {};
+  if (!event) {
+    return {};
+  }
 
   const queryParams = event.queryStringParameters || {};
   let body: any = {};
@@ -107,7 +110,7 @@ export function parseHistoricalCostRequest(event: any): HistoricalCostRequest {
     if (typeof event.body === "string") {
       body = JSON.parse(event.body);
     }
-  } catch (e) {
+  } catch {
     // Ignore parse error
   }
 
@@ -122,7 +125,7 @@ export function parseHistoricalCostRequest(event: any): HistoricalCostRequest {
     monthsBack: typeof monthsBack === "string" ? parseInt(monthsBack, 10) : (monthsBack ?? 0),
     periodLength:
       typeof periodLength === "string" ? parseInt(periodLength, 10) : (periodLength ?? 6),
-    groupBy: groupBy || "project",
+    groupBy,
     includeHtml: includeHtml === "true" || includeHtml === true,
     outputFormat: outputFormat as any,
   };

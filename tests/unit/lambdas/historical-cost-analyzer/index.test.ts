@@ -126,11 +126,15 @@ describe("historical-cost-analyzer handler", () => {
       expect.any(Date),
       expect.any(Date),
       expect.objectContaining({
-        Not: expect.objectContaining({
-          Dimensions: expect.objectContaining({
-            Key: "RECORD_TYPE",
+        And: expect.arrayContaining([
+          expect.objectContaining({
+            Not: expect.objectContaining({
+              Dimensions: expect.objectContaining({
+                Key: "RECORD_TYPE",
+              }),
+            }),
           }),
-        }),
+        ]),
       })
     );
 
@@ -143,10 +147,11 @@ describe("historical-cost-analyzer handler", () => {
     );
     expect(body.summary.links.htmlConsoleUrl).toMatch(/^https:\/\//);
     expect(body.summary.links.jsonConsoleUrl).toMatch(/^https:\/\//);
-    expect(body.summary.topProject).toBe("A");
+    expect(body.summary.topGroupValue).toBe("A");
+    expect(body.summary.groupByTag).toBe("project");
 
     const storedHtml = (ReportStorage.prototype.storeHtmlReport as jest.Mock).mock.calls[0][1];
-    expect(storedHtml).toContain("🏆 Top Project");
+    expect(storedHtml).toContain("🏆 Top project");
     expect(storedHtml).toContain("A");
     expect(storedHtml).toContain("2026-01");
     expect(storedHtml).toContain("2026-02");

@@ -77,8 +77,8 @@ export class OptimizationService {
     const topOpportunity = prioritized.length > 0 ? prioritized[0] : null;
 
     const unavailableServices = Object.entries(serviceAvailability.services)
-      .filter(([_, status]) => !status.available)
-      .map(([name, _]) => name);
+      .filter(([, status]) => !status.available)
+      .map(([name]) => name);
 
     return {
       reportDate: new Date(),
@@ -99,7 +99,9 @@ export class OptimizationService {
     const recommendations: ConsolidatedRecommendation[] = [];
     try {
       const availability = await this.awsServiceChecker.checkCostOptimizationHub();
-      if (!availability.available) return recommendations;
+      if (!availability.available) {
+        return recommendations;
+      }
 
       const command = new ListRecommendationsCommand({ maxResults: 100 });
       const response = await (this.costOptimizationHubClient as any).send(command);
@@ -107,7 +109,9 @@ export class OptimizationService {
       if (response.items) {
         for (const rec of response.items) {
           const recommendation = this.normalizeCOHRecommendation(rec);
-          if (recommendation) recommendations.push(recommendation);
+          if (recommendation) {
+            recommendations.push(recommendation);
+          }
         }
       }
       return recommendations;
@@ -121,7 +125,9 @@ export class OptimizationService {
     const recommendations: ConsolidatedRecommendation[] = [];
     try {
       const availability = await this.awsServiceChecker.checkTrustedAdvisor();
-      if (!availability.available) return recommendations;
+      if (!availability.available) {
+        return recommendations;
+      }
 
       const checks = await this.getTrustedAdvisorCostChecks();
       for (const check of checks) {
@@ -141,9 +147,13 @@ export class OptimizationService {
   // --- Helper methods for COH ---
 
   private normalizeCOHRecommendation(rec: any): ConsolidatedRecommendation | null {
-    if (!rec.resourceId || !rec.estimatedMonthlySavings) return null;
+    if (!rec.resourceId || !rec.estimatedMonthlySavings) {
+      return null;
+    }
     const savings = parseFloat(rec.estimatedMonthlySavings) || 0;
-    if (savings < 0.01) return null;
+    if (savings < 0.01) {
+      return null;
+    }
 
     const actionType = rec.actionType || "Optimize";
     return {
@@ -180,7 +190,7 @@ export class OptimizationService {
       const command = new DescribeTrustedAdvisorChecksCommand({ language: "en" });
       const response = await (this.supportClient as any).send(command);
       return response.checks?.filter((check: any) => check.category === "cost_optimizing") || [];
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -196,21 +206,27 @@ export class OptimizationService {
       });
       const response = await (this.supportClient as any).send(command);
       const result = response.result;
-      if (!result || result.status === "ok") return;
+      if (!result || result.status === "ok") {
+        return;
+      }
 
       if (result.flaggedResources) {
         for (const resource of result.flaggedResources) {
           const rec = this.normalizeTARecommendation(check, resource);
-          if (rec) recommendations.push(rec);
+          if (rec) {
+            recommendations.push(rec);
+          }
         }
       }
-    } catch (error) {
+    } catch {
       // Ignore individual check errors
     }
   }
 
   private normalizeTARecommendation(check: any, resource: any): ConsolidatedRecommendation | null {
-    if (!resource.resourceId) return null;
+    if (!resource.resourceId) {
+      return null;
+    }
     const savings = 0.01; // Placeholder
     return {
       id: `ta-${check.id}-${resource.resourceId}`,
