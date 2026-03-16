@@ -115,11 +115,13 @@ class ComplianceChecker {
 
     const summaryByTypeData = Object.entries(
       this.complianceService.getComplianceSummaryByResourceType(report.nonCompliantResources)
-    ).map(([type, stats]) => ({
-      type,
-      count: stats.count,
-      percentage: `${stats.percentage.toFixed(1)}%`,
-    }));
+    )
+      .map(([type, stats]) => ({
+        type,
+        count: stats.count,
+        percentage: `${stats.percentage.toFixed(1)}%`,
+      }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
 
     const typeSummaryTable = HtmlReportBuilder.buildSummaryTable(summaryByTypeData, {
       title: "📋 Non-Compliance by Resource Type",

@@ -1,4 +1,8 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import {
+  GetIdentityVerificationAttributesCommand,
+  SendEmailCommand,
+  SESClient,
+} from "@aws-sdk/client-ses";
 import { logger } from "../core/logger";
 
 interface SubjectFormatOptions {
@@ -36,42 +40,44 @@ export class EmailService {
     fromEmail?: string,
     displayName?: string
   ): Promise<void> {
-    // Use provided fromEmail, or FROM_EMAIL env var, or first recipient as sender
+    const validRecipients = EmailService.validateEmails(to);
+    if (validRecipients.length === 0) {
+      logger.error(
+        "Skipping email delivery because there are no valid recipient addresses",
+        undefined,
+        {
+          subject,
+        }
+      );
+      return;
+    }
+
     const senderEmail =
-      fromEmail || process.env.FROM_EMAIL || (to.length > 0 ? to[0] : "finops@company.com");
+      fromEmail ||
+      process.env.FROM_EMAIL ||
+      (validRecipients.length > 0 ? validRecipients[0] : "finops@company.com");
     const resolvedDisplayName = this.resolveDisplayName(displayName);
     const sourceAddress = this.formatSourceAddress(senderEmail, resolvedDisplayName);
 
     try {
-      const command = new SendEmailCommand({
-        Source: sourceAddress,
-        Destination: {
-          ToAddresses: to,
-        },
-        Message: {
-          Subject: {
-            Data: subject,
-            Charset: "UTF-8",
-          },
-          Body: {
-            Html: {
-              Data: htmlBody,
-              Charset: "UTF-8",
-            },
-            ...(textBody && {
-              Text: {
-                Data: textBody,
-                Charset: "UTF-8",
-              },
-            }),
-          },
-        },
-      });
-
-      await (this.sesClient as any).send(command);
+      await this.deliverEmail(validRecipients, subject, htmlBody, textBody, sourceAddress);
     } catch (error) {
+      if (this.isIdentityVerificationError(error)) {
+        const recovery = await this.handleIdentityVerificationFailure(
+          error,
+          validRecipients,
+          subject,
+          htmlBody,
+          textBody,
+          sourceAddress
+        );
+        if (recovery.recovered) {
+          return;
+        }
+      }
+
       logger.error("Failed to send email", error as Error, {
-        to: to.length,
+        to: validRecipients.length,
         subject,
         fromEmail: senderEmail,
         displayName: resolvedDisplayName,
@@ -181,5 +187,149 @@ export class EmailService {
     }
 
     return `${sanitizedDisplayName} <${email}>`;
+  }
+
+  private async deliverEmail(
+    to: string[],
+    subject: string,
+    htmlBody: string,
+    textBody: string | undefined,
+    sourceAddress: string
+  ): Promise<void> {
+    const command = new SendEmailCommand({
+      Source: sourceAddress,
+      Destination: {
+        ToAddresses: to,
+      },
+      Message: {
+        Subject: {
+          Data: subject,
+          Charset: "UTF-8",
+        },
+        Body: {
+          Html: {
+            Data: htmlBody,
+            Charset: "UTF-8",
+          },
+          ...(textBody && {
+            Text: {
+              Data: textBody,
+              Charset: "UTF-8",
+            },
+          }),
+        },
+      },
+    });
+
+    await (this.sesClient as any).send(command);
+  }
+
+  private isIdentityVerificationError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    const message = error.message.toLowerCase();
+    return (
+      error.name === "MessageRejected" &&
+      message.includes("not verified") &&
+      (message.includes("identity") || message.includes("identities"))
+    );
+  }
+
+  private async handleIdentityVerificationFailure(
+    error: unknown,
+    recipients: string[],
+    subject: string,
+    htmlBody: string,
+    textBody: string | undefined,
+    sourceAddress: string
+  ): Promise<{ recovered: boolean }> {
+    const verificationState = await this.getRecipientVerificationState(recipients);
+    const skippedRecipients = verificationState.unverified.length
+      ? verificationState.unverified
+      : this.extractUnverifiedEmailsFromError(error as Error);
+
+    for (const recipient of skippedRecipients) {
+      logger.error(
+        `Recipient email ${recipient} is not verified in SES and will not receive this report`
+      );
+    }
+
+    if (verificationState.verified.length === 0) {
+      logger.error(
+        "No verified SES recipients are available; skipping email delivery for this report",
+        error as Error,
+        {
+          attemptedRecipients: recipients,
+        }
+      );
+      return { recovered: true };
+    }
+
+    try {
+      await this.deliverEmail(
+        verificationState.verified,
+        subject,
+        htmlBody,
+        textBody,
+        sourceAddress
+      );
+      logger.warn("Email sent only to SES-verified recipients", {
+        deliveredRecipients: verificationState.verified,
+        skippedRecipients,
+      });
+      return { recovered: true };
+    } catch (retryError) {
+      logger.error("Failed to send email to SES-verified recipients", retryError as Error, {
+        deliveredRecipients: verificationState.verified,
+        skippedRecipients,
+      });
+      return { recovered: false };
+    }
+  }
+
+  private async getRecipientVerificationState(recipients: string[]): Promise<{
+    verified: string[];
+    unverified: string[];
+  }> {
+    try {
+      const command = new GetIdentityVerificationAttributesCommand({
+        Identities: recipients,
+      });
+      const response = await (this.sesClient as any).send(command);
+      const attributes = response.VerificationAttributes || {};
+
+      return recipients.reduce(
+        (result, recipient) => {
+          const status = attributes[recipient]?.VerificationStatus;
+          if (status === "Success") {
+            result.verified.push(recipient);
+          } else if (status) {
+            result.unverified.push(recipient);
+          }
+          return result;
+        },
+        { verified: [] as string[], unverified: [] as string[] }
+      );
+    } catch (lookupError) {
+      logger.warn("Unable to resolve SES recipient verification state", {
+        recipients,
+        error:
+          lookupError instanceof Error
+            ? { name: lookupError.name, message: lookupError.message }
+            : String(lookupError),
+      });
+
+      return {
+        verified: [],
+        unverified: [],
+      };
+    }
+  }
+
+  private extractUnverifiedEmailsFromError(error: Error): string[] {
+    const emails = error.message.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+    return [...new Set(emails)];
   }
 }

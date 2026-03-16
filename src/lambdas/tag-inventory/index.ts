@@ -133,11 +133,14 @@ class TagInventoryAnalyzer {
     );
 
     const unusualTagsTable = HtmlReportBuilder.buildSummaryTable(
-      report.unusualTags.slice(0, 20).map((t) => ({
-        key: t.key,
-        count: t.resourceCount,
-        types: Array.from(t.resourceTypes).join(", "),
-      })),
+      report.unusualTags
+        .map((t) => ({
+          key: t.key,
+          count: t.resourceCount,
+          types: Array.from(t.resourceTypes).join(", "),
+        }))
+        .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
+        .slice(0, 20),
       {
         title: "⚠️ Unusual or Specific Tags",
         note: "Tags used on very few resources (potential typos or special cases)",
