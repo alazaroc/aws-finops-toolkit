@@ -33,6 +33,7 @@ function run(command, args) {
     cwd: process.cwd(),
     encoding: "utf-8",
     shell: process.platform === "win32",
+    env: { ...process.env, AWS_PAGER: "", PAGER: "" },
   };
 
   const hasCmdSuffix = command.toLowerCase().endsWith(".cmd");
@@ -526,12 +527,9 @@ const deployArgs = [
   ...mergedTags.map((tag) => `${tag.key}=${tag.value}`),
 ];
 
+deployArgs.push("--no-confirm-changeset", "--no-fail-on-empty-changeset");
 if (diffOnly) {
-  deployArgs.push(
-    "--no-execute-changeset",
-    "--no-fail-on-empty-changeset",
-    "--no-confirm-changeset"
-  );
+  deployArgs.push("--no-execute-changeset");
 }
 
 run("sam", deployArgs);
