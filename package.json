@@ -62,6 +62,6 @@
         "@aws-sdk/client-sts": "^3.981.0",
         "@aws-sdk/client-support": "^3.981.0",
         "@aws-sdk/types": "^3.973.1",
-        "yaml": "^2.3.4"
+        "yaml": "^2.8.3"
     }
 }
