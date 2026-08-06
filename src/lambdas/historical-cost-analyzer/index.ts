@@ -36,14 +36,31 @@ class HistoricalCostAnalyzer {
     const groupLabel = report.groupByTag || "Tag Value";
 
     const isFiltered = !!this.config.regions?.length;
+    const orgNote = report.organizationMode
+      ? `<strong>🏢 Organization mode</strong> — consolidated across ${report.organizationInfo?.accountCount || "all"} accounts.`
+      : undefined;
+    const description = [orgNote, isFiltered
+      ? "<em>Note: This is a <strong>filtered scan</strong> limited to specific regions.</em>"
+      : undefined].filter(Boolean).join("<br>") || undefined;
+
+    const accountTable =
+      report.organizationMode && report.accountMonthlyCosts && report.accountMonthlyCosts.length > 0
+        ? HtmlReportBuilder.buildHistoricalCostTable(
+            report.accountMonthlyCosts.map((a) => ({
+              ...a,
+              // Use accountName as the display key for the table
+              service: `${a.accountName} (${a.accountId})`,
+            })),
+            "Account"
+          )
+        : "";
+
     const body = [
       HtmlReportBuilder.buildExecutiveSummary({
         title: "📅 Historical Cost Summary",
         date: report.reportDate,
         accountId: accountDisplay,
-        description: isFiltered
-          ? "<em>Note: This is a <strong>filtered scan</strong> limited to specific regions.</em>"
-          : undefined,
+        description,
         totalSavings: report.totalCost, // Borrowing field for total cost
         itemCount: report.monthlyCosts.length,
         itemLabel: "📅 Months Analyzed",
@@ -56,6 +73,7 @@ class HistoricalCostAnalyzer {
         },
       }),
       HtmlReportBuilder.buildHistoricalCostTable(report.groupedMonthlyCosts, groupLabel),
+      accountTable,
       HtmlReportBuilder.buildHistoricalCostTable(report.serviceMonthlyCosts, "Service"),
       HtmlReportBuilder.buildFooter({
         s3Url: reportLinks.jsonS3Url,

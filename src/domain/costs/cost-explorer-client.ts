@@ -324,4 +324,60 @@ export class CostExplorerService {
       throw error;
     }
   }
+
+  /**
+   * Get costs grouped by LINKED_ACCOUNT for multi-account (Organizations) breakdown.
+   */
+  async getCostsByAccount(
+    startDate: Date,
+    endDate: Date,
+    filter?: GetCostAndUsageRequest["Filter"]
+  ): Promise<CostExplorerResult> {
+    try {
+      const command = new GetCostAndUsageCommand({
+        TimePeriod: {
+          Start: startDate.toISOString().split("T")[0],
+          End: endDate.toISOString().split("T")[0],
+        },
+        Granularity: "MONTHLY",
+        Metrics: ["BlendedCost", "UnblendedCost"],
+        GroupBy: [{ Type: "DIMENSION", Key: "LINKED_ACCOUNT" }],
+        Filter: filter,
+      });
+
+      return (await this.costExplorerClient.send(command)) as GetCostAndUsageCommandOutput;
+    } catch (error) {
+      logger.error("Failed to get costs by account", error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get costs grouped by RECORD_TYPE (Usage, Credit, Refund, Tax, ...) with NO
+   * charge-type exclusions, so credits are visible. Used to compute the net cost
+   * (what the user actually pays after AWS credits are applied).
+   */
+  async getCostsByRecordType(
+    startDate: Date,
+    endDate: Date,
+    filter?: GetCostAndUsageRequest["Filter"]
+  ): Promise<CostExplorerResult> {
+    try {
+      const command = new GetCostAndUsageCommand({
+        TimePeriod: {
+          Start: startDate.toISOString().split("T")[0],
+          End: endDate.toISOString().split("T")[0],
+        },
+        Granularity: "MONTHLY",
+        Metrics: ["UnblendedCost"],
+        GroupBy: [{ Type: "DIMENSION", Key: "RECORD_TYPE" }],
+        Filter: filter,
+      });
+
+      return (await this.costExplorerClient.send(command)) as GetCostAndUsageCommandOutput;
+    } catch (error) {
+      logger.error("Failed to get costs by record type", error as Error);
+      throw error;
+    }
+  }
 }

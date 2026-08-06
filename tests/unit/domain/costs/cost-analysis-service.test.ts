@@ -84,11 +84,28 @@ describe("CostAnalysisService", () => {
       ],
     } as any);
 
+    // Mock getCostsByRecordType (net cost / credits)
+    jest.spyOn(CostExplorerService.prototype, "getCostsByRecordType").mockResolvedValue({
+      ResultsByTime: [
+        {
+          Groups: [
+            { Keys: ["Usage"], Metrics: { UnblendedCost: { Amount: "60" } } },
+            { Keys: ["Credit"], Metrics: { UnblendedCost: { Amount: "-25" } } },
+            { Keys: ["Tax"], Metrics: { UnblendedCost: { Amount: "3" } } },
+          ],
+        },
+      ],
+    } as any);
+
     const report = await service.analyzeCosts();
 
     expect(report.totalCost).toBe(60);
     expect(report.previousTotalCost).toBe(50);
     expect(report.groupedCosts.length).toBe(2);
+
+    // Net cost: Usage (60) + Credit (-25), Tax excluded => 35; credits => 25
+    expect(report.netCost).toBe(35);
+    expect(report.creditsApplied).toBe(25);
 
     const finopsGroup = report.groupedCosts.find((p) => p.groupValue === "FinOps");
     expect(finopsGroup?.cost).toBe(45);

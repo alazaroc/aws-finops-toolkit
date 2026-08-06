@@ -38,4 +38,21 @@ export abstract class BaseCostService extends BaseFinOpsService {
       includeRegions,
     });
   }
+
+  /**
+   * Filters WITHOUT charge-type exclusion, so Credit/Refund records are visible.
+   * Used to compute net cost (what is actually billed after AWS credits).
+   */
+  protected getFiltersWithCredits(): GetCostAndUsageRequest["Filter"] {
+    const includeRegions =
+      this.config.regions && this.config.regions.length > 0
+        ? [...new Set([...this.config.regions, "Global"])]
+        : undefined;
+
+    return CostExplorerService.buildFilter({
+      excludeAccounts: this.config.cost_analysis?.exclude_accounts,
+      excludeServices: this.config.cost_analysis?.exclude_services,
+      includeRegions,
+    });
+  }
 }

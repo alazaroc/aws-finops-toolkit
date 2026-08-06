@@ -36,6 +36,12 @@ interface ScheduleConfig {
   compliance_check: "weekly" | "daily";
 }
 
+interface OrganizationConfig {
+  enabled: "auto" | boolean;
+  show_account_breakdown: boolean;
+  excluded_accounts?: string[];
+}
+
 export interface SimpleFinOpsConfig {
   account_id: string;
   account_alias?: string;
@@ -46,4 +52,5 @@ export interface SimpleFinOpsConfig {
   regions?: string[];
   compliance?: ComplianceConfig;
   tag_inventory?: TagInventoryConfig;
+  organization?: OrganizationConfig;
 }

@@ -17,7 +17,11 @@ The idea is simple: AWS provides the pieces; this toolkit turns them into **oper
 - [Coverage matrix](#coverage-matrix-what-it-covers-and-what-it-doesnt)
 - [Architecture](#architecture-high-level)
 - [Quick deployment](#quick-deployment)
+- [Try it out](#try-it-out-manual-execution)
+- [Useful Commands](#useful-commands)
+- [Documentation](#documentation)
 - [Maintainer](#maintainer)
+- [License](#license)
 
 ## Features & Capabilities
 
@@ -29,6 +33,15 @@ The idea is simple: AWS provides the pieces; this toolkit turns them into **oper
 
 ![Cost Analysis Report 1](docs/images/screenshot-email-cost-analysis-1.png)
 ![Cost Analysis Report 2](docs/images/screenshot-email-cost-analysis-2.png)
+
+**Multi-account (AWS Organizations)**
+
+> When deployed in the management account (or a Cost Explorer delegated administrator),
+> the report auto-detects AWS Organizations and consolidates the whole org: a
+> per-account breakdown, plus net cost after AWS credits. Single-account setups keep
+> working unchanged — no configuration needed (`organization.enabled: auto`).
+
+![Cost Analysis Report - Organization / multi-account](docs/images/screenshot-email-cost-report-multiaccount.png)
 
 </details>
 
@@ -149,7 +162,7 @@ npm run setup
    npm run deploy
    ```
 
-> **Note**: This repo uses a custom script. Always use `npm run deploy` instead of `sam deploy` directly.
+> **Note**: Always use `npm run deploy` instead of `sam deploy` directly. See [docs/deploy-GUIDE.md](docs/deploy-GUIDE.md) for details.
 
 ### Post-deployment verification
 
@@ -191,6 +204,8 @@ Use the included script to scan for errors across all functions:
 ./scripts/check-lambda-logs.sh 60 errors
 ```
 
+See [docs/check-lambda-logs-GUIDE.md](docs/check-lambda-logs-GUIDE.md) for full usage and examples.
+
 ### Clean up
 
 To remove the stack (except S3 bucket if it has files):
@@ -198,6 +213,13 @@ To remove the stack (except S3 bucket if it has files):
 ```bash
 aws cloudformation delete-stack --stack-name finops-toolkit
 ```
+
+## Documentation
+
+- [docs/deploy-GUIDE.md](docs/deploy-GUIDE.md) — deployment script reference
+- [docs/setup-GUIDE.md](docs/setup-GUIDE.md) — dependency installation script reference
+- [docs/check-lambda-logs-GUIDE.md](docs/check-lambda-logs-GUIDE.md) — Lambda log review script reference
+- [docs/finops-framework.md](docs/finops-framework.md) — FinOps framework coverage
 
 ## Maintainer
 

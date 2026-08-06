@@ -443,9 +443,49 @@ export class SimpleEnvLoader {
         compliance_check: complianceSchedule,
       },
       regions,
+      organization: this.loadOrganizationConfig(configFile),
     };
 
     // Configuration loaded successfully
     return config;
+  }
+
+  /**
+   * Load organization config from env vars or config file
+   */
+  private static loadOrganizationConfig(configFile: ConfigYaml | null): {
+    enabled: "auto" | boolean;
+    show_account_breakdown: boolean;
+    excluded_accounts?: string[];
+  } {
+    // Env var override: ORGANIZATION_ENABLED = auto | true | false
+    const envEnabled = process.env.ORGANIZATION_ENABLED?.trim().toLowerCase();
+    let enabled: "auto" | boolean = "auto";
+    if (envEnabled === "true" || envEnabled === "yes") {
+      enabled = true;
+    } else if (envEnabled === "false" || envEnabled === "no") {
+      enabled = false;
+    } else if (envEnabled === "auto" || !envEnabled) {
+      // Check config file
+      const orgCfg = (configFile as any)?.organization;
+      if (orgCfg?.enabled === true || orgCfg?.enabled === "true") {
+        enabled = true;
+      } else if (orgCfg?.enabled === false || orgCfg?.enabled === "false") {
+        enabled = false;
+      }
+    }
+
+    const orgCfg = (configFile as any)?.organization;
+    const showBreakdown =
+      process.env.ORGANIZATION_SHOW_ACCOUNT_BREAKDOWN !== "false" &&
+      orgCfg?.show_account_breakdown !== false;
+
+    const excludedAccounts = orgCfg?.excluded_accounts?.filter(Boolean) || [];
+
+    return {
+      enabled,
+      show_account_breakdown: showBreakdown,
+      excluded_accounts: excludedAccounts.length > 0 ? excludedAccounts : undefined,
+    };
   }
 }

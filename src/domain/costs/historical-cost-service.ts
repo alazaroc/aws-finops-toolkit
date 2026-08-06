@@ -1,6 +1,7 @@
 import { logger } from "../../core/logger";
 import { ArrayUtils } from "../../core/array-utils";
 import { SimpleFinOpsConfig } from "../../types/finops-config";
+import { OrganizationService, OrganizationInfo } from "../../core/organization-service";
 import { BaseCostService } from "./base-cost-service";
 import { CostExplorerGroup, CostExplorerResult, CostExplorerService } from "./cost-explorer-client";
 
@@ -47,6 +48,12 @@ export interface HistoricalCostReport {
     monthlyCosts: Record<string, number>;
     totalCost: number;
   }>;
+  accountMonthlyCosts?: Array<{
+    accountId: string;
+    accountName: string;
+    monthlyCosts: Record<string, number>;
+    totalCost: number;
+  }>;
   totalCost: number;
   averageMonthlyCost: number;
   trends: {
@@ -55,6 +62,11 @@ export interface HistoricalCostReport {
   };
   topGroupValues: Array<{ groupValue: string; cost: number; percentage: number }>;
   topServices: Array<{ service: string; cost: number; percentage: number }>;
+  organizationMode: boolean;
+  organizationInfo?: {
+    id: string;
+    accountCount: number;
+  };
 }
 
 export class HistoricalCostService extends BaseCostService {
@@ -70,17 +82,114 @@ export class HistoricalCostService extends BaseCostService {
       const { startDate, endDate } = this.calculateDateRange(request);
       const groupByTag = request.groupBy || this.getDefaultGroupByTag();
 
-      // Fetch historical cost data
-      const costData = await this.fetchHistoricalCostData(startDate, endDate, groupByTag);
+      // Detect organization mode
+      const orgInfo = await this.detectOrganization();
+      const isOrgMode = orgInfo !== null;
+
+      // Fetch historical cost data (and account data if org mode)
+      const [costData, accountData] = await Promise.all([
+        this.fetchHistoricalCostData(startDate, endDate, groupByTag),
+        isOrgMode
+          ? this.costExplorer.getCostsByAccount(startDate, endDate, this.getCommonFilters())
+          : Promise.resolve(null),
+      ]);
 
       // Process data into report
       const report = this.processHistoricalData(costData, startDate, endDate, groupByTag);
+
+      // Enrich with organization data
+      report.organizationMode = isOrgMode;
+      if (isOrgMode && orgInfo && accountData) {
+        report.organizationInfo = {
+          id: orgInfo.id,
+          accountCount: orgInfo.accounts.length,
+        };
+        const nameMap = new Map(orgInfo.accounts.map((a) => [a.id, a.name]));
+        const months = report.monthlyCosts.map((m) => m.month);
+        report.accountMonthlyCosts = this.processAccountMonthlyCosts(accountData, months, nameMap);
+      }
 
       return report;
     } catch (error) {
       logger.error("Historical cost analysis service failed", error as Error);
       throw error;
     }
+  }
+
+  /**
+   * Detect if running in Organizations context
+   */
+  private async detectOrganization(): Promise<OrganizationInfo | null> {
+    const orgConfig = this.config.organization;
+    const enabled = orgConfig?.enabled ?? "auto";
+
+    if (enabled === false) {
+      return null;
+    }
+
+    const orgService = new OrganizationService();
+
+    if (enabled === true) {
+      return await orgService.getOrganizationInfo();
+    }
+
+    // "auto" mode
+    const mode = await orgService.detectMode();
+    if (mode === "single-account") {
+      return null;
+    }
+    return await orgService.getOrganizationInfo();
+  }
+
+  /**
+   * Process account breakdown into monthly costs format
+   */
+  private processAccountMonthlyCosts(
+    accountData: CostExplorerResult,
+    months: string[],
+    nameMap: Map<string, string>
+  ): Array<{ accountId: string; accountName: string; monthlyCosts: Record<string, number>; totalCost: number }> {
+    const map = new Map<string, Record<string, number>>();
+
+    if (accountData?.ResultsByTime) {
+      for (const timeResult of accountData.ResultsByTime) {
+        const month = timeResult.TimePeriod?.Start;
+        if (!month) {
+          continue;
+        }
+        for (const group of timeResult.Groups || []) {
+          const accountId = CostExplorerService.extractGroupKeys(group)[0] || "Unknown";
+          const cost = CostExplorerService.extractCostValue(group);
+          const existing = map.get(accountId) || {};
+          existing[month] = (existing[month] || 0) + cost;
+          map.set(accountId, existing);
+        }
+      }
+    }
+
+    const excluded = new Set(this.config.organization?.excluded_accounts || []);
+    const result: Array<{ accountId: string; accountName: string; monthlyCosts: Record<string, number>; totalCost: number }> = [];
+
+    for (const [accountId, monthlyCosts] of map.entries()) {
+      if (excluded.has(accountId)) {
+        continue;
+      }
+      let totalCost = 0;
+      for (const month of months) {
+        monthlyCosts[month] = monthlyCosts[month] || 0;
+        totalCost += monthlyCosts[month];
+      }
+      if (totalCost >= 0.01) {
+        result.push({
+          accountId,
+          accountName: nameMap.get(accountId) || accountId,
+          monthlyCosts,
+          totalCost,
+        });
+      }
+    }
+
+    return ArrayUtils.sortBy(result, (a, b) => b.totalCost - a.totalCost);
   }
 
   /**
@@ -195,6 +304,7 @@ export class HistoricalCostService extends BaseCostService {
       trends,
       topGroupValues,
       topServices,
+      organizationMode: false,
     };
   }
 

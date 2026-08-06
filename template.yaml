@@ -224,6 +224,8 @@ Resources:
               - budgets:DescribeBudgets
               - iam:ListAccountAliases
               - account:GetAccountInformation
+              - organizations:DescribeOrganization
+              - organizations:ListAccounts
             Resource: "*"
         - S3CrudPolicy:
             BucketName: !Ref ReportsBucket
@@ -296,6 +298,8 @@ Resources:
               - sts:GetCallerIdentity
               - iam:ListAccountAliases
               - account:GetAccountInformation
+              - organizations:DescribeOrganization
+              - organizations:ListAccounts
             Resource: "*"
         - S3CrudPolicy:
             BucketName: !Ref ReportsBucket

@@ -54,6 +54,13 @@ cost_analysis:
   group_by_tag: "project" # default "project"
   total_monthly_threshold: 20.0 # default 20.0
 
+# AWS Organizations - multi-account cost reporting (cost lambdas only)
+# Compliance/tag_inventory remain single-account.
+organization:
+  enabled: auto # auto (detect), true (force), false (disable)
+  show_account_breakdown: true
+  # excluded_accounts: ["123456789012"] # Account IDs to exclude from reports
+
 # Scheduled tasks configuration
 schedules:
   # Possible values for each schedule:

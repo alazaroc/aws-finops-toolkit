@@ -20,7 +20,7 @@ export class EmailService {
 
   constructor(region?: string) {
     this.sesClient = new SESClient({
-      region: region || process.env.AWS_REGION || "us-east-1",
+      region: region || process.env.SES_REGION || "us-east-1",
     });
   }
 
