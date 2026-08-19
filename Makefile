@@ -1,8 +1,40 @@
-.PHONY: help aws-credentials
+.PHONY: help install build test lint lint-fix format quality-check validate aws-credentials
 
 help:
 	@echo "aws-finops-toolkit — available commands:"
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed -E 's/^## /  /'
+
+## install: install dependencies
+install:
+	npm install
+
+## build: compile TypeScript
+build:
+	npm run build
+
+## test: run tests
+test:
+	npm test
+
+## lint: run ESLint
+lint:
+	npm run lint
+
+## lint-fix: auto-fix lint problems
+lint-fix:
+	npm run lint:fix
+
+## format: format code with Prettier
+format:
+	npm run format
+
+## quality-check: lint + format check (sin tests)
+quality-check:
+	npm run quality:check
+
+## validate: quality:check + tests
+validate:
+	npm run validate
 
 ## aws-credentials: propagates AWS_ACCESS_KEY_ID/SECRET/TOKEN from env to the given profile
 aws-credentials: ## Propagate AWS credentials to a profile (Usage: make aws-credentials [name])
