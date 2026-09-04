@@ -1,4 +1,4 @@
-.PHONY: help install build test lint lint-fix format quality-check validate aws-credentials
+.PHONY: help install build test lint lint-fix fix format quality-check validate aws-credentials
 
 help:
 	@echo "aws-finops-toolkit — available commands:"
@@ -23,6 +23,10 @@ lint:
 ## lint-fix: auto-fix lint problems
 lint-fix:
 	npm run lint:fix
+
+## fix: lint:fix + format (auto-fix everything)
+fix:
+	npm run fix
 
 ## format: format code with Prettier
 format:

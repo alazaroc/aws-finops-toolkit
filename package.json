@@ -1,70 +1,83 @@
 {
-    "name": "aws-finops-toolkit",
-    "version": "1.0.0",
-    "description": "Serverless FinOps toolkit for AWS. Automates cost analysis, tag governance, and operational reporting",
-    "author": "Alejandro Lazaro Chueca",
-    "license": "MIT",
-    "main": "index.js",
-    "scripts": {
-        "setup": "node scripts/setup.js",
-        "build": "tsc",
-        "build:watch": "tsc --watch",
-        "test": "jest",
-        "test:watch": "jest --watch",
-        "test:coverage": "jest --coverage",
-        "format": "prettier --write \"src/**/*.ts\" \"docs/**/*.md\" \"tests/**/*.ts\" \"config/**/*.yml\" \"*.md\"",
-        "format:check": "prettier --check \"src/**/*.ts\" \"docs/**/*.md\" \"tests/**/*.ts\" \"config/**/*.yml\" \"*.md\"",
-        "lint": "eslint src/**/*.ts",
-        "lint:fix": "eslint src/**/*.ts --fix",
-        "quality:check": "npm run lint && npm run format:check",
-        "validate": "npm run quality:check && npm run test",
-        "sam:local": "sam local start-api",
-        "deploy": "node scripts/deploy.js",
-        "deploy:clean": "node scripts/deploy.js --clean",
-        "diff": "node scripts/deploy.js --diff",
-        "diff:clean": "node scripts/deploy.js --diff --clean"
-    },
-    "keywords": [
-        "aws",
-        "finops",
-        "cost-analysis",
-        "governance",
-        "serverless",
-        "typescript"
+  "name": "aws-finops-toolkit",
+  "version": "1.0.0",
+  "description": "Serverless FinOps toolkit for AWS. Automates cost analysis, tag governance, and operational reporting",
+  "author": "Alejandro Lazaro Chueca",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "format": "prettier --write \"src/**/*.ts\" \"docs/**/*.md\" \"tests/**/*.ts\" \"config/**/*.yml\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"docs/**/*.md\" \"tests/**/*.ts\" \"config/**/*.yml\" \"*.md\"",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "fix": "npm run lint:fix && npm run format",
+    "quality:check": "npm run lint && npm run format:check",
+    "validate": "npm run quality:check && npm run test",
+    "sam:local": "sam local start-api",
+    "deploy": "node scripts/deploy.js",
+    "deploy:clean": "node scripts/deploy.js --clean",
+    "diff": "node scripts/deploy.js --diff",
+    "diff:clean": "node scripts/deploy.js --diff --clean",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "aws",
+    "finops",
+    "cost-analysis",
+    "governance",
+    "serverless",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-lambda": "^3.981.0",
+    "@smithy/core": "^3.22.0",
+    "@types/aws-lambda": "^8.10.130",
+    "@types/jest": "^29.5.8",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "aws-sdk-client-mock": "^4.1.0",
+    "eslint": "^8.54.0",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.0.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-account": "^3.981.0",
+    "@aws-sdk/client-compute-optimizer": "^3.981.0",
+    "@aws-sdk/client-cost-explorer": "^3.981.0",
+    "@aws-sdk/client-cost-optimization-hub": "^3.981.0",
+    "@aws-sdk/client-ec2": "^3.981.0",
+    "@aws-sdk/client-eventbridge": "^3.981.0",
+    "@aws-sdk/client-iam": "^3.981.0",
+    "@aws-sdk/client-organizations": "^3.981.0",
+    "@aws-sdk/client-resource-groups-tagging-api": "^3.981.0",
+    "@aws-sdk/client-s3": "^3.981.0",
+    "@aws-sdk/client-ses": "^3.981.0",
+    "@aws-sdk/client-sts": "^3.981.0",
+    "@aws-sdk/client-support": "^3.981.0",
+    "@aws-sdk/types": "^3.973.1",
+    "yaml": "^2.8.3"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
     ],
-    "engines": {
-        "node": ">=22"
-    },
-    "devDependencies": {
-        "@aws-sdk/client-lambda": "^3.981.0",
-        "@smithy/core": "^3.22.0",
-        "@types/aws-lambda": "^8.10.130",
-        "@types/jest": "^29.5.8",
-        "@types/node": "^22.0.0",
-        "@typescript-eslint/eslint-plugin": "^8.53.1",
-        "@typescript-eslint/parser": "^8.53.1",
-        "aws-sdk-client-mock": "^4.1.0",
-        "eslint": "^8.54.0",
-        "jest": "^29.7.0",
-        "prettier": "^3.0.0",
-        "ts-jest": "^29.1.1",
-        "typescript": "^5.3.2"
-    },
-    "dependencies": {
-        "@aws-sdk/client-account": "^3.981.0",
-        "@aws-sdk/client-compute-optimizer": "^3.981.0",
-        "@aws-sdk/client-cost-explorer": "^3.981.0",
-        "@aws-sdk/client-cost-optimization-hub": "^3.981.0",
-        "@aws-sdk/client-ec2": "^3.981.0",
-        "@aws-sdk/client-eventbridge": "^3.981.0",
-        "@aws-sdk/client-iam": "^3.981.0",
-        "@aws-sdk/client-organizations": "^3.981.0",
-        "@aws-sdk/client-resource-groups-tagging-api": "^3.981.0",
-        "@aws-sdk/client-s3": "^3.981.0",
-        "@aws-sdk/client-ses": "^3.981.0",
-        "@aws-sdk/client-sts": "^3.981.0",
-        "@aws-sdk/client-support": "^3.981.0",
-        "@aws-sdk/types": "^3.973.1",
-        "yaml": "^2.8.3"
-    }
+    "*.{json,md,yml}": [
+      "prettier --write"
+    ]
+  }
 }
