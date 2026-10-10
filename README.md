@@ -1,9 +1,16 @@
+<div align="center">
+
 # AWS FinOps Toolkit
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
-![AWS](https://img.shields.io/badge/AWS-FinOps-orange)
+**AWS gives you the pieces — this turns them into operations.** Automated cost analysis, tag governance, and operational reporting that complement Cost Explorer and Budgets instead of replacing them.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
+![AWS Serverless](https://img.shields.io/badge/AWS-serverless-FF9900?logo=amazonaws&logoColor=white)
+![AWS FinOps](https://img.shields.io/badge/AWS-FinOps-232F3E?logo=amazonaws&logoColor=white)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+</div>
 
 FinOps toolkit for AWS that automates cost visibility, tag governance, and reporting.
 Designed to **complement** Cost Explorer and Budgets, not replace them.
