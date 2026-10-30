@@ -402,7 +402,10 @@ function writeGeneratedTemplate(tags) {
   fs.writeFileSync(GENERATED_TEMPLATE_PATH, updated);
 }
 
+const { version: appVersion } = require(path.join(process.cwd(), "package.json"));
+
 const parameterOverrides = [
+  ["AppVersion", appVersion],
   ["TagProject", tagsByKey.get("project")],
   ["FromEmail", fromEmail], // Sender email
   ["ToEmails", toEmails.join(",")], // Recipient emails (comma-separated)

@@ -5,6 +5,11 @@ Description: |
   Cost analysis and compliance checking
 
 Parameters:
+  AppVersion:
+    Type: String
+    Default: unknown
+    Description: Toolkit version, taken from package.json by npm run deploy.
+
   TagProject:
     Type: String
     Default: finops-toolkit
@@ -140,6 +145,9 @@ Globals:
     Timeout: 300
     Runtime: nodejs22.x
     MemorySize: 512
+    Environment:
+      Variables:
+        APP_VERSION: !Ref AppVersion
     Tags: &CommonTagMap
       project: !Ref TagProject
     PropagateTags: true
