@@ -23,12 +23,12 @@ Any of these options work:
 
 ## Commands
 
-| Command | Description |
-| --- | --- |
-| `npm run deploy` | Build and deploy |
-| `npm run deploy -- --clean` | Clean build artifacts first, then deploy |
-| `npm run diff` | Preview changes (CloudFormation changeset, no deploy) |
-| `npm run diff:clean` | Same with clean build |
+| Command                     | Description                                           |
+| --------------------------- | ----------------------------------------------------- |
+| `npm run deploy`            | Build and deploy                                      |
+| `npm run deploy -- --clean` | Clean build artifacts first, then deploy              |
+| `npm run diff`              | Preview changes (CloudFormation changeset, no deploy) |
+| `npm run diff:clean`        | Same with clean build                                 |
 
 ## What the script does
 
@@ -42,12 +42,12 @@ Any of these options work:
 
 ## Troubleshooting
 
-| Error | Fix |
-| --- | --- |
-| `Missing config file: config/config.yml` | Copy `config.example.yml` and fill in your values |
-| `Missing required config: email_config` | Add `email_config.from` and `email_config.to` to `config.yml` |
-| `Command failed: aws sts get-caller-identity` | Configure or refresh AWS credentials |
-| `No changes to deploy` | Stack is already up to date — no action needed |
+| Error                                         | Fix                                                           |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| `Missing config file: config/config.yml`      | Copy `config.example.yml` and fill in your values             |
+| `Missing required config: email_config`       | Add `email_config.from` and `email_config.to` to `config.yml` |
+| `Command failed: aws sts get-caller-identity` | Configure or refresh AWS credentials                          |
+| `No changes to deploy`                        | Stack is already up to date — no action needed                |
 
 ### SAM CLI not found
 

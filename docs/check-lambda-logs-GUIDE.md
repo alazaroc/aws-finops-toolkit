@@ -19,13 +19,13 @@
 
 ### Parameters
 
-| # | Parameter | Description | Allowed values | Default |
-| --- | --- | --- | --- | --- |
-| 1 | `minutes` | Time window | Integer (e.g. `30`, `60`, `1440`) | `30` |
-| 2 | `log_type` | Filter mode | `errors` · `all` | `errors` |
-| 3 | `environment` | Target env | `test` · `prod` · `auto` | `auto` |
-| 4 | `profile` | AWS profile | Profile name or `""` for default | `""` |
-| 5 | `save` | Export to file | `save` · `no` | `no` |
+| #   | Parameter     | Description    | Allowed values                    | Default  |
+| --- | ------------- | -------------- | --------------------------------- | -------- |
+| 1   | `minutes`     | Time window    | Integer (e.g. `30`, `60`, `1440`) | `30`     |
+| 2   | `log_type`    | Filter mode    | `errors` · `all`                  | `errors` |
+| 3   | `environment` | Target env     | `test` · `prod` · `auto`          | `auto`   |
+| 4   | `profile`     | AWS profile    | Profile name or `""` for default  | `""`     |
+| 5   | `save`        | Export to file | `save` · `no`                     | `no`     |
 
 ```bash
 ./scripts/check-lambda-logs.sh --help
@@ -53,12 +53,12 @@
 
 ## Output color coding
 
-| Color | Meaning |
-| --- | --- |
-| 🔴 Red | Errors (`ERROR`, `Failed`, `Exception`, `❌`) |
-| 🟡 Yellow | Warnings (`WARN`, `⚠️`) |
-| 🔵 Blue | Request headers and IDs |
-| 🟣 Purple | System events (`START`, `END`, `REPORT`) |
+| Color     | Meaning                                       |
+| --------- | --------------------------------------------- |
+| 🔴 Red    | Errors (`ERROR`, `Failed`, `Exception`, `❌`) |
+| 🟡 Yellow | Warnings (`WARN`, `⚠️`)                       |
+| 🔵 Blue   | Request headers and IDs                       |
+| 🟣 Purple | System events (`START`, `END`, `REPORT`)      |
 
 ## Requirements
 

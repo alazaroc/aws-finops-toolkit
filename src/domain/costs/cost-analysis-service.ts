@@ -242,10 +242,7 @@ export class CostAnalysisService extends BaseCostService {
   /**
    * Get cost breakdown by linked account
    */
-  private async getAccountBreakdown(
-    startDate: Date,
-    endDate: Date
-  ): Promise<CostExplorerResult> {
+  private async getAccountBreakdown(startDate: Date, endDate: Date): Promise<CostExplorerResult> {
     const filter = this.getCommonFilters();
     return await this.costExplorer.getCostsByAccount(startDate, endDate, filter);
   }

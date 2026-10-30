@@ -30,11 +30,13 @@ Run this after cloning or whenever new dependencies are added.
 ## Troubleshooting
 
 **`[setup] Failed to run npm install in: /path/to/directory`**
+
 - Verify that `package.json` exists in that directory
 - Check write permissions (`ls -la`)
 - Check npm registry connectivity (`npm ping`)
 
 **Node.js version issues**
+
 ```bash
 node --version  # must be >= 22
 # upgrade via nvm or fnm

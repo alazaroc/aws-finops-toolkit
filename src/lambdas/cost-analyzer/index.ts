@@ -5,7 +5,11 @@ import { logger } from "../../core/logger";
 import { EmailService } from "../../infrastructure/email-service";
 import { HtmlReportBuilder } from "../../infrastructure/html-builder";
 import { FinOpsReportService, ReportLinks } from "../../infrastructure/report-delivery-service";
-import { CostAnalysisService, CostAnalysisReport, AccountBreakdown } from "../../domain/costs/cost-analysis-service";
+import {
+  CostAnalysisService,
+  CostAnalysisReport,
+  AccountBreakdown,
+} from "../../domain/costs/cost-analysis-service";
 
 /**
  * Cost Analyzer Lambda for AWS cost analysis and reporting
@@ -55,9 +59,15 @@ export class CostAnalyzer {
     const orgNote = report.organizationMode
       ? `<strong>🏢 Organization mode</strong> — consolidated across ${report.organizationInfo?.accountCount || "all"} accounts.`
       : undefined;
-    const description = [orgNote, isFiltered
-      ? "<em>Note: This is a <strong>filtered scan</strong> limited to specific regions.</em>"
-      : undefined].filter(Boolean).join("<br>") || undefined;
+    const description =
+      [
+        orgNote,
+        isFiltered
+          ? "<em>Note: This is a <strong>filtered scan</strong> limited to specific regions.</em>"
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join("<br>") || undefined;
     const executiveSummary = HtmlReportBuilder.buildExecutiveSummary({
       title: "💰 Cost Analysis Summary",
       date: report.reportDate,
@@ -86,9 +96,7 @@ export class CostAnalyzer {
             const topDiff = topService.cost - topService.previousCost;
             if (Math.abs(topDiff) / Math.abs(diff) > 0.7) {
               const isNew = topService.previousCost < 1;
-              const driver = isNew
-                ? `${topService.service} (new)`
-                : topService.service;
+              const driver = isNew ? `${topService.service} (new)` : topService.service;
               return `${pctStr} — driven by ${driver}`;
             }
           }
@@ -210,7 +218,8 @@ export class CostAnalyzer {
               {
                 key: "accountName",
                 label: "Account",
-                format: (v, row) => `${v} <span style="color:#6b7280;font-size:0.85em;">(${row.accountId})</span>`,
+                format: (v, row) =>
+                  `${v} <span style="color:#6b7280;font-size:0.85em;">(${row.accountId})</span>`,
               },
               { key: "cost", label: "Cost", format: (v) => `$${v.toFixed(2)}` },
               {
@@ -259,7 +268,9 @@ export class CostAnalyzer {
     const subject = report.organizationMode
       ? EmailService.formatSubject(
           `💰 AWS Cost Report - $${report.totalCost.toFixed(2)}${netStr}`,
-          { additionalInfo: `Organization (${report.organizationInfo?.accountCount || 0} accounts)` }
+          {
+            additionalInfo: `Organization (${report.organizationInfo?.accountCount || 0} accounts)`,
+          }
         )
       : EmailService.formatSubject(
           `💰 AWS Cost Report - $${report.totalCost.toFixed(2)}${netStr}`,

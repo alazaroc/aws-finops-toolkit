@@ -39,9 +39,15 @@ class HistoricalCostAnalyzer {
     const orgNote = report.organizationMode
       ? `<strong>🏢 Organization mode</strong> — consolidated across ${report.organizationInfo?.accountCount || "all"} accounts.`
       : undefined;
-    const description = [orgNote, isFiltered
-      ? "<em>Note: This is a <strong>filtered scan</strong> limited to specific regions.</em>"
-      : undefined].filter(Boolean).join("<br>") || undefined;
+    const description =
+      [
+        orgNote,
+        isFiltered
+          ? "<em>Note: This is a <strong>filtered scan</strong> limited to specific regions.</em>"
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join("<br>") || undefined;
 
     const accountTable =
       report.organizationMode && report.accountMonthlyCosts && report.accountMonthlyCosts.length > 0

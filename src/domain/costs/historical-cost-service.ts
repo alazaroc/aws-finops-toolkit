@@ -148,7 +148,12 @@ export class HistoricalCostService extends BaseCostService {
     accountData: CostExplorerResult,
     months: string[],
     nameMap: Map<string, string>
-  ): Array<{ accountId: string; accountName: string; monthlyCosts: Record<string, number>; totalCost: number }> {
+  ): Array<{
+    accountId: string;
+    accountName: string;
+    monthlyCosts: Record<string, number>;
+    totalCost: number;
+  }> {
     const map = new Map<string, Record<string, number>>();
 
     if (accountData?.ResultsByTime) {
@@ -168,7 +173,12 @@ export class HistoricalCostService extends BaseCostService {
     }
 
     const excluded = new Set(this.config.organization?.excluded_accounts || []);
-    const result: Array<{ accountId: string; accountName: string; monthlyCosts: Record<string, number>; totalCost: number }> = [];
+    const result: Array<{
+      accountId: string;
+      accountName: string;
+      monthlyCosts: Record<string, number>;
+      totalCost: number;
+    }> = [];
 
     for (const [accountId, monthlyCosts] of map.entries()) {
       if (excluded.has(accountId)) {
