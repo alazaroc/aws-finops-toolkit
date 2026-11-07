@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install build test lint lint-fix fix format quality-check validate aws-credentials release
+.PHONY: help install dev build test lint lint-fix fix format quality-check validate deploy clean aws-credentials release
 
 # release (empty BUMP → interactive; BUMP=patch|minor|major → non-interactive)
 BUMP ?=
@@ -11,6 +11,10 @@ help:
 ## install: install dependencies
 install:
 	npm install
+
+## dev: run the API locally with SAM (sam local start-api)
+dev:
+	npm run sam:local
 
 ## build: compile TypeScript
 build:
@@ -43,6 +47,14 @@ quality-check:
 ## validate: quality:check + tests
 validate:
 	npm run validate
+
+## deploy: build and deploy with SAM (scripts/deploy.js)
+deploy:
+	npm run deploy
+
+## clean: remove build artifacts
+clean:
+	rm -rf dist .aws-sam
 
 ## aws-credentials: propagate AWS_ACCESS_KEY_ID/SECRET/TOKEN from env to a profile (Usage: make aws-credentials [profile])
 aws-credentials:
